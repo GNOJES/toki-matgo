@@ -1,0 +1,21 @@
+Set of Hwatu — Marcus Richert (published February 22, 2021)
+Source: https://www.marcusrichert.com/images/hwatu/
+Master: https://www.marcusrichert.com/images/hwatu/hwatu.svg
+Based on Hanafuda graphics by Louie Mantia, Jr. (http://louiemantia.com/)
+Original contributions: https://commons.wikimedia.org/wiki/Special:Contributions/Louiemantia
+
+The 48 m1-0.webp through m12-3.webp images and their source SVG are licensed
+under Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+License: https://creativecommons.org/licenses/by-sa/4.0/
+Legal code: https://creativecommons.org/licenses/by-sa/4.0/legalcode.en
+
+Marcus Richert changed coloration and some linework to resemble a typical
+Korean hwatu deck. Toki Matgo additionally serializes the SVG, crops each
+card from the master, flattens transparent areas onto white, resizes to
+256x417 and converts to lossless WebP. The card artwork has not been redrawn.
+These adapted image files remain available under CC BY-SA 4.0.
+No endorsement by the original artists is implied.
+
+bonus-0.svg, bonus-1.svg, back.svg and the app icon are original Toki Matgo
+artwork and are not part of Marcus Richert's Set of Hwatu.
+This image license notice does not license the application code.

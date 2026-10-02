@@ -14,9 +14,12 @@ test('production caches first load, reloads offline, plays single and hides debu
       page.evaluate(async () => {
         const reg = await navigator.serviceWorker.getRegistration();
         if (!reg?.active) return false;
-        const cache = await caches.open('toki-v1');
+        const cache = await caches.open('toki-v2-hwatu');
         const keys = await cache.keys();
-        return keys.filter((r) => r.url.includes('/_next/static/')).length >= 3;
+        return (
+          keys.filter((r) => r.url.includes('/_next/static/')).length >= 3 &&
+          keys.filter((r) => /\/cards\/m\d+-\d\.webp$/.test(r.url)).length === 48
+        );
       }),
     )
     .toBe(true);
@@ -25,6 +28,21 @@ test('production caches first load, reloads offline, plays single and hides debu
   await expect(page.getByRole('button', { name: /혼자 치기/ })).toBeVisible();
   await page.getByRole('button', { name: /혼자 치기/ }).click();
   await expect(page.getByTestId('game-table')).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator('.hand-card img')
+        .evaluateAll(
+          (images) =>
+            images.length === 10 &&
+            images.every(
+              (image) =>
+                (image as HTMLImageElement).complete &&
+                (image as HTMLImageElement).naturalWidth > 0,
+            ),
+        ),
+    )
+    .toBe(true);
   await expect
     .poll(() => page.locator('.hand-card[aria-disabled="false"]').count(), { timeout: 12000 })
     .toBeGreaterThan(0);

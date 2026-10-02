@@ -71,6 +71,6 @@ Vercel Functions는 이 프로젝트의 상시 Socket.IO 서버를 호스팅하�
 - [규칙 명세](docs/RULES.md): 공식 한게임 **맞고** 문서와 구현 해석, 계산 순서
 - [구조](docs/ARCHITECTURE.md): 엔진, 개인별 projection, action sequence, 연출/재접속
 - [QA](docs/QA.md): 자동 검증과 실기기 확인 항목
-- [에셋](docs/ASSETS.md): 직접 제작한 화투 SVG 및 조사 근거
+- [에셋](docs/ASSETS.md): Marcus Richert 원본 화투, 카드 대응표·CC BY-SA 출처, 보너스/뒷면
 
 공식 가이드에서 확인되지 않은 선고르기 세부 방식 등은 RULES.md에 명시했다. 실제 2026 앱과 모든 세부 동작이 동일하다고 검증한 상태는 아니다. 시뮬레이션/브라우저 검증을 실기기에서의 상용 품질 인증으로 간주하지 않는다.

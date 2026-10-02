@@ -36,6 +36,8 @@ Deck: 48 기본 + 쌍피 2 = 50, 12월×4, 고유 ID, seed 재현, shuffle ident
 
 ## 수동 브라우저 확인
 
+화투 교체 후 Marcus Richert 원본 48장의 광/열끗/띠/피와 한국식 11월 오동·12월 비 대응을 contact sheet로 확인했다. Chromium/WebKit 4개 크기의 E2E 10개와 빌드·타입 검사 모두 통과했다. production PWA는 WebP 48장 캐시를 확인하고 오프라인 재로딩 후 손패 10장의 실제 이미지 로딩과 패 내기를 검증했다. 모바일 화면 검증은 총통으로 즉시 끝나는 무작위 분배를 피하도록 테스트 context에 고정 RNG를 사용한다.
+
 Codex 내장 브라우저 390×844에서 홈, 실제패 기본 속도의 내 패 내기/덱 뒤집기/회수/CPU 응답을 확인. 5개 필수 영역과 손패 10장이 모두 보이고 scrollHeight=844. 확대/설정/선 marker/상대 뒷면 장수 표시 확인. JavaScript error 로그 없음.
 
 ## 출시 전 실기기 QA — 미확인
@@ -43,7 +45,7 @@ Codex 내장 브라우저 390×844에서 홈, 실제패 기본 속도의 내 패
 - iPhone Safari / 홈 화면 standalone: 노치 safe area, 동적 주소창, audio unlock, Web Share, 길게 누르기, 확대/VoiceOver.
 - Android Chrome / 홈 화면 설치: navigation bar, 진동/소리 토글, TalkBack.
 - 실제 스마트폰 두 대에서 Wi-Fi ↔ LTE 전환, 백그라운드/전화 수신 후 복구, 장시간 대기.
-- 작은 기기에서 광/열끗/띠/피 그림을 실제 화투 사용자들이 구별하는지; 자체 SVG 전통 모티프 시인성 검토.
+- 작은 기기에서 광/열끗/띠/피 그림을 실제 화투 사용자들이 구별하는지; Marcus Richert 원본 화투 디자인 시인성 검토.
 - 가장 많은 바닥패/획득패, 여러 폭탄, 고 횟수, orientation 복귀, 큰 OS 글자 설정.
 - 한게임 실제 2026 맞고 앱의 세부 동작과 RULES.md의 명시적 해석(선고르기, 동시총통, 고박, 마지막 특수 예외)을 비교 확인.
 - production TLS/WS proxy, FRONTEND_ORIGIN, 다중 기기 접속, 서버 재시작 운영 대응.

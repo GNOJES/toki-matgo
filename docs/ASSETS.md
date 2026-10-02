@@ -1,11 +1,20 @@
 # 화투 에셋
 
-`public/cards/*.svg` 51개(기본 48, 보너스 2, 뒷면 1)는 이 프로젝트를 위해 직접 제작한 SVG. 생성 소스는 `scripts/generate-cards.mjs`. 기존 제조사나 게임 스크린샷의 벡터화/복사가 아니다. 광의 光, 홍단/청단, 월별 식물·동물, 쌍피 표시를 포함한다. 작은 화면의 식별을 돕는 월 표식은 보조 정보이며 카드 그림을 대체하지 않는다.
+## 기본 화투 48장
 
-2026-10-02 조사:
+사용자가 지정한 [Marcus Richert의 Set of Hwatu](https://www.marcusrichert.com/images/hwatu/)를 사용한다. 2021-02-22 공개, Louie Mantia, Jr.의 Hanafuda 그림을 바탕으로 한국 화투에 맞게 색상과 일부 선을 수정한 디자인이다. 라이선스는 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 
-- [nojhan/hanafuda](https://github.com/nojhan/hanafuda): 일본 화찰용 12개 SVG. 한국 11월 오동/12월 비 구성과 바로 맞지 않고 이동된 저장소의 라이선스 확인 필요.
-- [C-W-Z/hanafuda](https://github.com/C-W-Z/hanafuda): 그림 CC BY-SA 4.0. 한국식 광/홍단·청단과 월 구성에 수정 필요.
-- [Wikimedia SVG Hanafuda](https://commons.wikimedia.org/wiki/Category:SVG_Hanafuda): 이미지별 라이선스 상이. 범용 permissive 한국 화투 50장 완성 세트를 확인하지 못했다.
+- 원본 SVG: `assets/hwatu/hwatu-source.svg`. 공개 SVG를 브라우저의 SVG DOM에서 직렬화한 파일이며 그림의 경로·색상은 그대로다.
+- 게임용: `public/cards/m1-0.webp` ~ `m12-3.webp`, 256×417 무손실 WebP 48장. 원본 카드 영역을 분할하고 투명 영역을 흰색으로 합성해 축소·변환했다. 그림을 다시 그리거나 월 숫자·추가 표식을 덧붙이지 않았다.
+- 재생성: `npm run assets`. 원본은 저장소에 포함되므로 작가 사이트에 접속할 필요가 없다. `sharp`를 이용한다.
+- 대응표: `assets/hwatu/mapping.json`. 엔진 ID, 원본 PNG 이름, SVG 시트의 월/영역, 원본 SHA-256을 기록한다.
 
-따라서 외부 에셋을 가져오지 않고 독자 제작을 선택했다. SVG는 전통 모티프를 단순화했으므로 실제 한국 화투 사용자와 시인성 비교 QA가 추가로 필요하다. 소리는 Web Audio로 생성한 짧은 잡음이며 외부 게임 사운드를 사용하지 않는다.
+원본 SVG 시트는 일본식 순서인 11번째 버들/비, 12번째 오동이다. 엔진의 한국식 11월 오동·12월 비에 맞춰 교환한다. 일반 월의 시트는 특수패/피/띠/피 순서이므로 엔진의 특수패/띠/피/피에 맞춰 재배치한다. 8월은 광/열끗/피/피, 11월 쌍피는 붉은 아래 면의 `Hwatu_November_Kasu_2.png`, 12월 쌍피는 `Hwatu_December_Kasu.png`에 대응한다.
+
+원작자와 라이선스 링크는 게임의 설정 화면에 표시하며, 출처·변경 내역은 `public/cards/LICENSE.txt`로 배포한다. 원본과 변환한 48장 이미지에는 CC BY-SA 4.0을 유지한다. 이 이미지 라이선스가 앱 코드 전체에 적용된다고 표시하지 않는다.
+
+## 보너스·뒷면·아이콘·소리
+
+보너스 쌍피 2장, 뒷면, 앱 아이콘은 기존 직접 제작한 SVG를 유지한다. 생성 소스는 `scripts/generate-card-extras.mjs`. 이들은 위 작가의 48장 세트에 포함되지 않는다. 소리는 Web Audio로 생성한 짧은 잡음이며 외부 게임 사운드를 사용하지 않는다.
+
+PWA 캐시 버전은 `toki-v2-hwatu`로 올렸다. 기존 캐시를 정리하고 새로운 WebP 48장을 미리 저장한다.

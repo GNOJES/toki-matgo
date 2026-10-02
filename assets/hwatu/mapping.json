@@ -1,0 +1,300 @@
+{
+  "source": "https://www.marcusrichert.com/images/hwatu/hwatu.svg",
+  "sourceSha256": "321d266dbacdfa9acf1467c8d44439436adcbfbf7be97e7609aa61c7cc0bca91",
+  "authors": [
+    "Marcus Richert",
+    "Louie Mantia, Jr."
+  ],
+  "license": "CC-BY-SA-4.0",
+  "changes": "SVG DOM serialization; per-card crop; opaque white background; lossless 256×417 WebP conversion.",
+  "cards": [
+    {
+      "id": "m1-0",
+      "original": "Hwatu_January_Hikari.png",
+      "sheetMonth": 1,
+      "viewBox": "0 0 103.2 168.2"
+    },
+    {
+      "id": "m1-1",
+      "original": "Hwatu_January_Tanzaku.png",
+      "sheetMonth": 1,
+      "viewBox": "217.75000000000003 0 103.2 168.2"
+    },
+    {
+      "id": "m1-2",
+      "original": "Hwatu_January_Kasu_1.png",
+      "sheetMonth": 1,
+      "viewBox": "108.55000000000001 0 103.2 168.2"
+    },
+    {
+      "id": "m1-3",
+      "original": "Hwatu_January_Kasu_2.png",
+      "sheetMonth": 1,
+      "viewBox": "326.29999999999995 0 103.2 168.2"
+    },
+    {
+      "id": "m2-0",
+      "original": "Hwatu_February_Tane.png",
+      "sheetMonth": 2,
+      "viewBox": "447.2 0 103.2 168.2"
+    },
+    {
+      "id": "m2-1",
+      "original": "Hwatu_February_Tanzaku.png",
+      "sheetMonth": 2,
+      "viewBox": "664.9499999999999 0 103.2 168.2"
+    },
+    {
+      "id": "m2-2",
+      "original": "Hwatu_February_Kasu_1.png",
+      "sheetMonth": 2,
+      "viewBox": "555.75 0 103.2 168.2"
+    },
+    {
+      "id": "m2-3",
+      "original": "Hwatu_February_Kasu_2.png",
+      "sheetMonth": 2,
+      "viewBox": "773.5 0 103.2 168.2"
+    },
+    {
+      "id": "m3-0",
+      "original": "Hwatu_March_Hikari.png",
+      "sheetMonth": 3,
+      "viewBox": "895.6999999999999 0 103.2 168.2"
+    },
+    {
+      "id": "m3-1",
+      "original": "Hwatu_March_Tanzaku.png",
+      "sheetMonth": 3,
+      "viewBox": "1113.45 0 103.2 168.2"
+    },
+    {
+      "id": "m3-2",
+      "original": "Hwatu_March_Kasu_1.png",
+      "sheetMonth": 3,
+      "viewBox": "1004.2499999999999 0 103.2 168.2"
+    },
+    {
+      "id": "m3-3",
+      "original": "Hwatu_March_Kasu_2.png",
+      "sheetMonth": 3,
+      "viewBox": "1222 0 103.2 168.2"
+    },
+    {
+      "id": "m4-0",
+      "original": "Hwatu_April_Tane.png",
+      "sheetMonth": 4,
+      "viewBox": "0 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m4-1",
+      "original": "Hwatu_April_Tanzaku.png",
+      "sheetMonth": 4,
+      "viewBox": "217.75000000000003 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m4-2",
+      "original": "Hwatu_April_Kasu_1.png",
+      "sheetMonth": 4,
+      "viewBox": "108.55000000000001 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m4-3",
+      "original": "Hwatu_April_Kasu_2.png",
+      "sheetMonth": 4,
+      "viewBox": "326.29999999999995 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m5-0",
+      "original": "Hwatu_May_Tane.png",
+      "sheetMonth": 5,
+      "viewBox": "447.2 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m5-1",
+      "original": "Hwatu_May_Tanzaku.png",
+      "sheetMonth": 5,
+      "viewBox": "664.9499999999999 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m5-2",
+      "original": "Hwatu_May_Kasu_1.png",
+      "sheetMonth": 5,
+      "viewBox": "555.75 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m5-3",
+      "original": "Hwatu_May_Kasu_2.png",
+      "sheetMonth": 5,
+      "viewBox": "773.5 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m6-0",
+      "original": "Hwatu_June_Tane.png",
+      "sheetMonth": 6,
+      "viewBox": "895.6999999999999 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m6-1",
+      "original": "Hwatu_June_Tanzaku.png",
+      "sheetMonth": 6,
+      "viewBox": "1113.45 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m6-2",
+      "original": "Hwatu_June_Kasu_1.png",
+      "sheetMonth": 6,
+      "viewBox": "1004.2499999999999 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m6-3",
+      "original": "Hwatu_June_Kasu_2.png",
+      "sheetMonth": 6,
+      "viewBox": "1222 186.29999999999998 103.2 168.2"
+    },
+    {
+      "id": "m7-0",
+      "original": "Hwatu_July_Tane.png",
+      "sheetMonth": 7,
+      "viewBox": "0 373.75 103.2 168.2"
+    },
+    {
+      "id": "m7-1",
+      "original": "Hwatu_July_Tanzaku.png",
+      "sheetMonth": 7,
+      "viewBox": "217.75000000000003 373.75 103.2 168.2"
+    },
+    {
+      "id": "m7-2",
+      "original": "Hwatu_July_Kasu_1.png",
+      "sheetMonth": 7,
+      "viewBox": "108.55000000000001 373.75 103.2 168.2"
+    },
+    {
+      "id": "m7-3",
+      "original": "Hwatu_July_Kasu_2.png",
+      "sheetMonth": 7,
+      "viewBox": "326.29999999999995 373.75 103.2 168.2"
+    },
+    {
+      "id": "m8-0",
+      "original": "Hwatu_August_Hikari.png",
+      "sheetMonth": 8,
+      "viewBox": "447.2 373.75 103.2 168.2"
+    },
+    {
+      "id": "m8-1",
+      "original": "Hwatu_August_Tane.png",
+      "sheetMonth": 8,
+      "viewBox": "664.9499999999999 373.75 103.2 168.2"
+    },
+    {
+      "id": "m8-2",
+      "original": "Hwatu_August_Kasu_1.png",
+      "sheetMonth": 8,
+      "viewBox": "555.75 373.75 103.2 168.2"
+    },
+    {
+      "id": "m8-3",
+      "original": "Hwatu_August_Kasu_2.png",
+      "sheetMonth": 8,
+      "viewBox": "773.5 373.75 103.2 168.2"
+    },
+    {
+      "id": "m9-0",
+      "original": "Hwatu_September_Tane.png",
+      "sheetMonth": 9,
+      "viewBox": "895.6999999999999 373.75 103.2 168.2"
+    },
+    {
+      "id": "m9-1",
+      "original": "Hwatu_September_Tanzaku.png",
+      "sheetMonth": 9,
+      "viewBox": "1113.45 373.75 103.2 168.2"
+    },
+    {
+      "id": "m9-2",
+      "original": "Hwatu_September_Kasu_1.png",
+      "sheetMonth": 9,
+      "viewBox": "1004.2499999999999 373.75 103.2 168.2"
+    },
+    {
+      "id": "m9-3",
+      "original": "Hwatu_September_Kasu_2.png",
+      "sheetMonth": 9,
+      "viewBox": "1222 373.75 103.2 168.2"
+    },
+    {
+      "id": "m10-0",
+      "original": "Hwatu_October_Tane.png",
+      "sheetMonth": 10,
+      "viewBox": "0 563.5 103.2 168.2"
+    },
+    {
+      "id": "m10-1",
+      "original": "Hwatu_October_Tanzaku.png",
+      "sheetMonth": 10,
+      "viewBox": "217.75000000000003 563.5 103.2 168.2"
+    },
+    {
+      "id": "m10-2",
+      "original": "Hwatu_October_Kasu_1.png",
+      "sheetMonth": 10,
+      "viewBox": "108.55000000000001 563.5 103.2 168.2"
+    },
+    {
+      "id": "m10-3",
+      "original": "Hwatu_October_Kasu_2.png",
+      "sheetMonth": 10,
+      "viewBox": "326.29999999999995 563.5 103.2 168.2"
+    },
+    {
+      "id": "m11-0",
+      "original": "Hwatu_November_Hikari.png",
+      "sheetMonth": 12,
+      "viewBox": "895.6999999999999 563.5 103.2 168.2"
+    },
+    {
+      "id": "m11-1",
+      "original": "Hwatu_November_Kasu_2.png",
+      "sheetMonth": 12,
+      "viewBox": "1113.45 563.5 103.2 168.2"
+    },
+    {
+      "id": "m11-2",
+      "original": "Hwatu_November_Kasu_1.png",
+      "sheetMonth": 12,
+      "viewBox": "1004.2499999999999 563.5 103.2 168.2"
+    },
+    {
+      "id": "m11-3",
+      "original": "Hwatu_November_Kasu_3.png",
+      "sheetMonth": 12,
+      "viewBox": "1222 563.5 103.2 168.2"
+    },
+    {
+      "id": "m12-0",
+      "original": "Hwatu_December_Hikari.png",
+      "sheetMonth": 11,
+      "viewBox": "447.2 563.5 103.2 168.2"
+    },
+    {
+      "id": "m12-1",
+      "original": "Hwatu_December_Tane.png",
+      "sheetMonth": 11,
+      "viewBox": "555.75 563.5 103.2 168.2"
+    },
+    {
+      "id": "m12-2",
+      "original": "Hwatu_December_Tanzaku.png",
+      "sheetMonth": 11,
+      "viewBox": "664.9499999999999 563.5 103.2 168.2"
+    },
+    {
+      "id": "m12-3",
+      "original": "Hwatu_December_Kasu.png",
+      "sheetMonth": 11,
+      "viewBox": "773.5 563.5 103.2 168.2"
+    }
+  ]
+}

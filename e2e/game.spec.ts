@@ -41,18 +41,32 @@ for (const [width, height] of [
 ])
   test(`mobile ${width}×${height} fits all areas / zoom / settings`, async ({ page, context }) => {
     await speed(context);
+    // Stable display deal: a random chongtong would open a result modal before zoom.
+    // This override only runs inside this test's browser context.
+    await context.addInitScript(() => {
+      let seed = 12345;
+      const original = crypto.getRandomValues.bind(crypto);
+      Object.defineProperty(crypto, 'getRandomValues', {
+        value: (array: ArrayBufferView) => {
+          if (!(array instanceof Uint32Array)) return original(array);
+          for (let i = 0; i < array.length; i++) {
+            seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+            array[i] = seed;
+          }
+          return array;
+        },
+      });
+    });
     await page.setViewportSize({ width, height });
     await page.goto('/');
     await page.getByRole('button', { name: /혼자 치기/ }).click();
     await game(page);
-    const rects = await page
-      .locator('[data-testid]')
-      .evaluateAll((els) =>
-        els.map((el) => ({
-          name: el.getAttribute('data-testid'),
-          r: el.getBoundingClientRect().toJSON(),
-        })),
-      );
+    const rects = await page.locator('[data-testid]').evaluateAll((els) =>
+      els.map((el) => ({
+        name: el.getAttribute('data-testid'),
+        r: el.getBoundingClientRect().toJSON(),
+      })),
+    );
     for (const { r } of rects) {
       expect(r.top).toBeGreaterThanOrEqual(0);
       expect(r.bottom).toBeLessThanOrEqual(height);
@@ -61,6 +75,19 @@ for (const [width, height] of [
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(height);
     expect(await page.getByTestId('opponent-hand').locator('img').count()).toBeGreaterThan(0);
     expect(await page.locator('.hand-card').count()).toBe(10);
+    await expect
+      .poll(() =>
+        page
+          .locator('.hand-card img')
+          .evaluateAll((images) =>
+            images.every(
+              (image) =>
+                (image as HTMLImageElement).complete &&
+                (image as HTMLImageElement).naturalWidth > 0,
+            ),
+          ),
+      )
+      .toBe(true);
     await page.getByRole('button', { name: '손패 확대 ↗' }).click();
     await expect(page.getByRole('dialog', { name: '내 손패 크게 보기' })).toBeVisible();
     await page.getByRole('button', { name: '닫기' }).click();

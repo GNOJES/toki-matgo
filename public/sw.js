@@ -1,6 +1,6 @@
-const CACHE = 'toki-v1';
+const CACHE = 'toki-v2-hwatu';
 const CARDS = Array.from({ length: 12 }, (_, m) =>
-  Array.from({ length: 4 }, (_, v) => `/cards/m${m + 1}-${v}.svg`),
+  Array.from({ length: 4 }, (_, v) => `/cards/m${m + 1}-${v}.webp`),
 ).flat();
 const STATIC = [
   '/',

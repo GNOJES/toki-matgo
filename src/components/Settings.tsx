@@ -69,6 +69,21 @@ export function Settings({
         />
       </label>
       <p className="fine-print">진동은 지원되는 기기에서 작동해요.</p>
+      <p className="fine-print">
+        화투 그림:{' '}
+        <a href="https://www.marcusrichert.com/images/hwatu/" target="_blank" rel="noreferrer">
+          Marcus Richert
+        </a>
+        {' · '}원작 Louie Mantia, Jr.
+        <br />
+        <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">
+          CC BY-SA 4.0
+        </a>
+        {' · '}
+        <a href="/cards/LICENSE.txt" target="_blank" rel="noreferrer">
+          출처·이용 안내
+        </a>
+      </p>
       <button className="primary" onClick={onClose}>
         이대로 좋아요
       </button>
