@@ -11,13 +11,17 @@
     "start": "HOSTNAME=0.0.0.0 node .next-prod/standalone/server.js",
     "start:server": "tsx server/index.ts",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "firebase emulators:exec --only auth,database --project demo-toki-matgo \"playwright test\"",
     "typecheck": "tsc --noEmit",
     "assets": "node scripts/generate-cards.mjs",
     "format": "prettier --write .",
-    "test:pwa": "playwright test --config playwright.production.config.ts"
+    "test:pwa": "playwright test --config playwright.production.config.ts",
+    "emulators": "firebase emulators:start --only auth,database --project demo-toki-matgo",
+    "dev:firebase": "node scripts/dev-firebase.mjs",
+    "test:firebase": "firebase emulators:exec --only auth,database --project demo-toki-matgo \"vitest run --config vitest.firebase.config.ts\""
   },
   "dependencies": {
+    "firebase": "^12.19.0",
     "next": "^16.0.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",
@@ -27,14 +31,24 @@
     "tsx": "^4.20.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.56.0",
     "@types/node": "^24.0.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "firebase-tools": "^15.32.1",
     "prettier": "^3.9.9",
     "sharp": "^0.35.5",
     "typescript": "^5.9.3",
     "vitest": "^4.0.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.0",
+    "basic-ftp": "^6.2.1",
+    "@opentelemetry/core": "^2.8.0",
+    "gaxios": {
+      "uuid": "^11.1.1"
+    }
   }
 }

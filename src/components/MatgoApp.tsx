@@ -1,7 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
-import { io, type Socket } from 'socket.io-client';
 import QRCode from 'qrcode';
 import { cardFlight, type FlightGeometry } from '../lib/card-motion';
 import { useAppBack } from '../lib/use-app-back';
@@ -28,19 +27,10 @@ import type {
   GameView,
   PlayerId,
 } from '../game-engine/types';
-import type { RoomSnapshot, Stats } from '../../server/rooms';
-interface RoomMessage extends RoomSnapshot {
-  events: GameEvent[];
-}
-interface Ack {
-  ok: boolean;
-  error?: string;
-  token?: string;
-  code?: string;
-}
+import type { MultiplayerTransport, RoomMessage, Stats } from '../multiplayer/types';
 interface SavedRoom {
   code: string;
-  token: string;
+  uid: string;
 }
 const eventLabel: Record<string, string> = {
   CARD_PLAYED: '패를 내려놓아요',
@@ -73,7 +63,7 @@ export function MatgoApp() {
   prefsRef.current = prefs;
   const [nickname, setNickname] = useState('');
   const [codeInput, setCodeInput] = useState('');
-  const [room, setRoom] = useState<RoomSnapshot | null>(null);
+  const [room, setRoom] = useState<RoomMessage | null>(null);
   const [view, setView] = useState<GameView | null>(null);
   const viewRef = useRef<GameView | null>(null);
   const logical = useRef<GameState | null>(null);
@@ -115,7 +105,8 @@ export function MatgoApp() {
   const [error, setError] = useState('');
   const [connected, setConnected] = useState(true);
   const [entering, setEntering] = useState(false);
-  const socket = useRef<Socket | null>(null);
+  const multiplayer = useRef<MultiplayerTransport | null>(null);
+  const connectionAttempt = useRef(0);
   const saved = useRef<SavedRoom | null>(null);
   const queue = useRef(Promise.resolve());
   const generation = useRef(0);
@@ -358,7 +349,10 @@ export function MatgoApp() {
           setStatus('');
           busyRef.current = false;
           setBusy(false);
-          if (modeRef.current === 'multi') socket.current?.emit('game:ready', next.stateVersion);
+          if (modeRef.current === 'multi')
+            void multiplayer.current
+              ?.ready(roundRef.current, next.stateVersion)
+              .catch(() => setError('연결을 복구하고 있어요.'));
         })
         .catch(() => {
           if (epoch === generation.current) {
@@ -376,82 +370,84 @@ export function MatgoApp() {
     [publish],
   );
   const connectRoom = useCallback(
-    (code?: string, token?: string, name?: string) => {
+    (code?: string, _uid?: string, name?: string) => {
+      const attempt = ++connectionAttempt.current;
       setEntering(true);
       setError('');
+      setConnected(false);
       setMode('multi');
       modeRef.current = 'multi';
       setScreen('lobby');
-      socket.current?.disconnect();
-      const endpoint =
-        process.env.NEXT_PUBLIC_REALTIME_URL ??
-        `${window.location.protocol}//${window.location.hostname}:3002`;
-      const s = io(endpoint, {
-        reconnection: true,
-        reconnectionDelay: 700,
-        reconnectionDelayMax: 4000,
-        timeout: 7000,
-        transports: ['websocket', 'polling'],
-      });
-      socket.current = s;
-      let roomCode = code;
-      let roomToken = token;
-      s.on('connect', () => {
-        setConnected(true);
-        s.timeout(7000).emit(
-          'room:enter',
-          {
-            code: roomCode,
-            token: roomToken,
-            nickname: name || getItem('toki.nickname.v1') || '친구',
-          },
-          (err: Error | null, a: Ack) => {
-            setEntering(false);
-            if (err || !a?.ok) {
-              setError(a?.error ?? '방에 연결하지 못했어요. 서버 주소와 연결을 확인해주세요.');
-              setScreen('friends');
-              s.disconnect();
+      multiplayer.current?.dispose();
+      multiplayer.current = null;
+      void import('../multiplayer/firebase-transport')
+        .then(async ({ FirebaseTransport, readableError }) => {
+          try {
+            const transport = await FirebaseTransport.open(
+              {
+                connection: (value) => {
+                  if (attempt === connectionAttempt.current) setConnected(value);
+                },
+                error: (message) => {
+                  if (attempt === connectionAttempt.current) setError(message);
+                },
+                state: (data: RoomMessage) => {
+                  if (attempt !== connectionAttempt.current) return;
+                  const newRound = roundRef.current !== data.round;
+                  roundRef.current = data.round;
+                  setRound(data.round);
+                  setStats(data.stats);
+                  setRoom(data);
+                  seq.current = data.actionSequence;
+                  meRef.current = data.me;
+                  setMe(data.me);
+                  setEntering(false);
+                  if (data.closed) {
+                    setError('방이 종료되었어요. 대기실로 돌아가 새 방을 만들어주세요.');
+                    return;
+                  }
+                  if (data.game) {
+                    setScreen('game');
+                    if (newRound) {
+                      generation.current++;
+                      queue.current = Promise.resolve();
+                      busyRef.current = false;
+                      setBusy(false);
+                      setMotion(null);
+                      setStruck({});
+                      setLanding(null);
+                      waitingFlight.current = {};
+                      publish(data.game);
+                    }
+                    present(data.game, data.events, newRound);
+                  } else setScreen('lobby');
+                },
+              },
+              code,
+              name || getItem('toki.nickname.v1') || '친구',
+              !!_uid,
+            );
+            if (attempt !== connectionAttempt.current) {
+              transport.dispose();
               return;
             }
-            roomCode = a.code;
-            roomToken = a.token;
-            saved.current = { code: a.code!, token: a.token! };
-            storeItem('toki.room.v1', JSON.stringify(saved.current));
-          },
-        );
-      });
-      s.on('room:state', (data: RoomMessage) => {
-        const newRound = roundRef.current !== data.round;
-        roundRef.current = data.round;
-        setRound(data.round);
-        setStats(data.stats);
-        setRoom(data);
-        seq.current = data.actionSequence;
-        meRef.current = data.me;
-        setMe(data.me);
-        setEntering(false);
-        if (data.game) {
-          setScreen('game');
-          if (newRound) {
-            generation.current++;
-            queue.current = Promise.resolve();
-            busyRef.current = false;
-            setBusy(false);
-            setMotion(null);
-            setStruck({});
-            setLanding(null);
-            waitingFlight.current = {};
-            publish(data.game);
+            multiplayer.current = transport;
+            saved.current = { code: transport.code, uid: transport.uid };
+            storeItem('toki.firebase.room.v1', JSON.stringify(saved.current));
+          } catch (error) {
+            if (attempt !== connectionAttempt.current) return;
+            setEntering(false);
+            setError(readableError(error));
+            setScreen('friends');
           }
-          present(data.game, data.events, newRound);
-        } else setScreen('lobby');
-      });
-      s.on('disconnect', () => setConnected(false));
-      s.on('connect_error', () => {
-        setConnected(false);
-        setEntering(false);
-        setError('서버에 연결할 수 없어요. 잠시 후 자동으로 다시 시도해요.');
-      });
+        })
+        .catch(() => {
+          if (attempt === connectionAttempt.current) {
+            setEntering(false);
+            setScreen('friends');
+            setError('연결을 준비하지 못했어요. 다시 시도해주세요.');
+          }
+        });
     },
     [present, publish],
   );
@@ -463,16 +459,16 @@ export function MatgoApp() {
     setDebug(process.env.NODE_ENV === 'development' && params.get('debug') === '1');
     let prior: SavedRoom | null = null;
     try {
-      prior = JSON.parse(getItem('toki.room.v1') ?? 'null');
+      prior = JSON.parse(getItem('toki.firebase.room.v1') ?? 'null');
     } catch {}
     if (
       prior &&
       typeof prior.code === 'string' &&
-      typeof prior.token === 'string' &&
+      typeof prior.uid === 'string' &&
       (!code || code === prior.code)
     ) {
       saved.current = prior;
-      connectRoom(prior.code, prior.token);
+      connectRoom(prior.code, prior.uid);
     } else if (code) {
       setCodeInput(code);
       setScreen('friends');
@@ -495,7 +491,8 @@ export function MatgoApp() {
     }
     return () => {
       generation.current++;
-      socket.current?.disconnect();
+      connectionAttempt.current++;
+      multiplayer.current?.dispose();
       if (touchTimer.current) clearTimeout(touchTimer.current);
     };
   }, [connectRoom]);
@@ -599,7 +596,7 @@ export function MatgoApp() {
       setSpecial(null);
       unlockAudio();
       if (modeRef.current === 'multi') {
-        if (!socket.current?.connected) {
+        if (!multiplayer.current?.connected) {
           setError('연결 복구를 기다려주세요.');
           return;
         }
@@ -607,24 +604,18 @@ export function MatgoApp() {
         if (!current) return;
         busyRef.current = true;
         setBusy(true);
-        const envelope = {
-          round: roundRef.current,
-          sequence: seq.current + 1,
-          stateVersion: current.stateVersion,
-          action,
-        };
-        socket.current.timeout(8000).emit('game:action', envelope, (err: Error | null, a: Ack) => {
-          if (err) {
+        void multiplayer.current
+          .action({
+            round: roundRef.current,
+            sequence: seq.current + 1,
+            stateVersion: current.stateVersion,
+            action,
+          })
+          .catch((error) => {
             busyRef.current = false;
             setBusy(false);
-            setError('응답을 기다리는 중이에요. 연결을 복구합니다.');
-            socket.current?.disconnect().connect();
-          } else if (!a?.ok) {
-            busyRef.current = false;
-            setBusy(false);
-            setError(a?.error ?? '패를 다시 선택해주세요.');
-          }
-        });
+            setError(error instanceof Error ? error.message : '패를 다시 선택해주세요.');
+          });
         return;
       }
       try {
@@ -684,10 +675,11 @@ export function MatgoApp() {
     setStatus('');
     setLanding(null);
     waitingFlight.current = {};
-    socket.current?.emit('room:leave');
-    socket.current?.disconnect();
-    socket.current = null;
-    storeItem('toki.room.v1', null);
+    connectionAttempt.current++;
+    const previousTransport = multiplayer.current;
+    multiplayer.current = null;
+    if (previousTransport) void previousTransport.leave().catch(() => previousTransport.dispose());
+    storeItem('toki.firebase.room.v1', null);
     saved.current = null;
     setScreen('home');
     setRoom(null);
@@ -740,16 +732,20 @@ export function MatgoApp() {
   };
   const nextRound = () => {
     if (mode === 'single') startSingle(logical.current);
-    else
-      socket.current?.emit('game:next', {}, (a: Ack) => {
-        if (!a.ok) setError(a.error ?? '다음 판을 기다려주세요.');
-      });
+    else if (view && multiplayer.current)
+      void multiplayer.current
+        .nextRound(roundRef.current, view.stateVersion, seq.current + 1)
+        .catch((error) =>
+          setError(error instanceof Error ? error.message : '다음 판을 기다려주세요.'),
+        );
   };
   const snapshotStatus =
     !connected && mode === 'multi'
       ? '연결을 복구하고 있어요'
       : mode === 'multi' && room && !room.connected[1 - me]
-        ? '상대방 연결을 기다리는 중'
+        ? me === 1
+          ? '방장의 연결을 기다리고 있어요.'
+          : '친구의 연결을 기다리고 있어요.'
         : busy
           ? status
           : view?.phase === 'SELECT_FLOOR'
@@ -885,7 +881,7 @@ export function MatgoApp() {
           </button>
           <p className="fine-print">
             같은 방의 두 사람만 패를 볼 수 있어요.
-            <br />내 손패는 나에게만 보입니다.
+            <br />방 코드나 초대 링크를 아는 친구와 둘이서 즐겨요.
           </p>
         </section>
       )}
@@ -1387,7 +1383,7 @@ export function MatgoApp() {
         <Modal title="대기실로 돌아갈까요?" onClose={() => setExit(false)}>
           <p>
             {mode === 'multi'
-              ? '친구에게 연결 대기 상태로 표시됩니다. 새로고침은 같은 판으로 돌아올 수 있어요.'
+              ? '대기실로 돌아가면 이 방이 종료됩니다. 친구와 다시 치려면 새 방을 만들어주세요.'
               : '이번 판의 진행 상황은 저장되지 않아요.'}
           </p>
           <button className="primary" onClick={() => setExit(false)}>

@@ -115,7 +115,7 @@ test('single three complete rounds, results and next dealer', async ({ page, con
     if (round < 3) await page.getByRole('button', { name: '한 판 더', exact: true }).click();
   }
 });
-test('two contexts: room / hidden card traffic / moves / reconnect / complete game / next round', async ({
+test('two contexts: Firebase room / same host state / moves / reconnect / complete game / next round', async ({
   browser,
 }) => {
   const a = await browser.newContext({
@@ -139,12 +139,15 @@ test('two contexts: room / hidden card traffic / moves / reconnect / complete ga
     p.on('websocket', (ws) =>
       ws.on('framereceived', ({ payload }) => {
         const raw = payload.toString();
-        if (raw.startsWith('42')) {
-          try {
-            const [event, data] = JSON.parse(raw.slice(2));
-            if (event === 'room:state') messages[i].push(data);
-          } catch {}
-        }
+        try {
+          const packet = JSON.parse(raw);
+          const value = packet?.d?.b?.d;
+          const serialized = value?.state?.data ?? value?.data;
+          if (typeof serialized === 'string') {
+            const state = JSON.parse(serialized);
+            if (state.game) messages[i].push(state);
+          }
+        } catch {}
       }),
     );
   await pa.goto('/');
@@ -177,15 +180,19 @@ test('two contexts: room / hidden card traffic / moves / reconnect / complete ga
     );
   };
   await match();
-  // Verify both *actual received* initial payloads, not merely CSS hiding.
+  // Full authoritative state is intentionally readable by these two trusted friends.
+  await expect.poll(() => messages[0].length > 0 && messages[1].length > 0).toBe(true);
   const initial = messages.map((list) => (list as any[]).find((x) => x.game));
-  for (let i = 0; i < 2; i++) {
-    expect(initial[i]).toBeTruthy();
-    expect(initial[i].game.players[1 - i]).not.toHaveProperty('hand');
-    expect(initial[i].game).not.toHaveProperty('deck');
-    const encoded = JSON.stringify(initial[i]);
-    for (const c of initial[1 - i].game.hand) expect(encoded).not.toContain(`"${c.id}"`);
-  }
+  expect(initial[0].game).toEqual(initial[1].game);
+  expect(initial[0].game.deck.length).toBeGreaterThan(0);
+  await expect(pa.getByTestId('opponent-hand').locator('img').first()).toHaveAttribute(
+    'src',
+    '/cards/back.svg',
+  );
+  await expect(pb.getByTestId('opponent-hand').locator('img').first()).toHaveAttribute(
+    'src',
+    '/cards/back.svg',
+  );
   let steps = 0;
   for (; steps < 4; steps++) {
     if ((await pa.getByTestId('game-table').getAttribute('data-phase')) === 'FINISHED') break;
@@ -195,7 +202,7 @@ test('two contexts: room / hidden card traffic / moves / reconnect / complete ga
   }
   const version = await pb.getByTestId('game-table').getAttribute('data-version');
   await b.setOffline(true);
-  await expect(pa.getByRole('status')).toContainText('상대방 연결을 기다리는 중', {
+  await expect(pa.getByRole('status')).toContainText('친구의 연결을 기다리고 있어요.', {
     timeout: 25000,
   });
   await b.setOffline(false);
@@ -221,26 +228,31 @@ test('two contexts: room / hidden card traffic / moves / reconnect / complete ga
   const final = (messages[0] as any[]).filter((m) => m.game?.result).at(-1)?.game.result;
   const finalB = (messages[1] as any[]).filter((m) => m.game?.result).at(-1)?.game.result;
   expect(final).toEqual(finalB);
-  // Every state/event/reconnect packet is checked against the other player's concurrent hand.
-  for (let i = 0; i < 2; i++)
-    for (const msg of messages[i] as any[]) {
-      if (!msg.game) continue;
-      expect(msg.game.players[1 - i]).not.toHaveProperty('hand');
-      const counterpart = (messages[1 - i] as any[]).find(
-        (other) =>
-          other.game &&
-          other.round === msg.round &&
-          other.game.stateVersion === msg.game.stateVersion,
-      );
-      if (counterpart)
-        for (const c of counterpart.game.hand)
-          expect(JSON.stringify(msg)).not.toContain(`"${c.id}"`);
-    }
+  expect((messages[0] as any[]).filter((m) => m.game?.result).at(-1)?.game).toEqual(
+    (messages[1] as any[]).filter((m) => m.game?.result).at(-1)?.game,
+  );
   await pa.getByRole('button', { name: '한 판 더', exact: true }).click();
   await pb.getByRole('button', { name: '한 판 더', exact: true }).click();
   await expect(pa.getByTestId('game-table')).toHaveAttribute('data-round', '2');
   await expect(pb.getByTestId('game-table')).toHaveAttribute('data-round', '2');
   await match();
+  await a.setOffline(true);
+  await expect(pb.getByRole('status')).toContainText('방장의 연결을 기다리고 있어요.', {
+    timeout: 30000,
+  });
+  await a.setOffline(false);
+  await pa.reload();
+  await game(pa);
+  await match();
+  await pb.getByRole('button', { name: '나가기', exact: true }).click();
+  await pb
+    .getByRole('dialog', { name: '대기실로 돌아갈까요?' })
+    .getByRole('button', { name: '대기실로', exact: true })
+    .click();
+  await expect(pb.getByRole('link', { name: '토끼맞고 홈' })).toBeVisible();
+  await expect(
+    pa.getByText('방이 종료되었어요. 대기실로 돌아가 새 방을 만들어주세요.', { exact: true }),
+  ).toBeVisible();
   await a.close();
   await b.close();
 });

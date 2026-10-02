@@ -4,25 +4,26 @@
 
 ## 자동 검증
 
-| 검증                                             | 결과                                                               |
-| ------------------------------------------------ | ------------------------------------------------------------------ |
-| Vitest 엔진/방/fixture 65개                      | 통과                                                               |
-| seed 0–999 전체 판 AI 시뮬레이션                 | 모두 종료, 매 action 50장/턴 보존                                  |
-| TypeScript strict                                | 통과                                                               |
-| Next.js 16.3.8 production standalone build       | 통과                                                               |
-| 360×800 / 375×812 / 390×844 / 412×915 · Chromium | 4개 통과, 페이지 스크롤 없음                                       |
-| 동일 4개 viewport · WebKit                       | 4개 통과, 확대/설정 조작                                           |
-| 싱글 3판 · Chromium                              | 고/스톱, 종료 결과, 다음 판 통과                                   |
-| 멀티 2 context · Chromium                        | 생성/URL 참여, 바닥/점수/턴/종료/다음 판 동일                      |
-| 숨김 정보 · 실제 수신 WebSocket                  | initial/event/reconnect payload에 상대 손패 ID 없음                |
-| 재접속 · Chromium                                | B offline → A 연결 대기 → B online/새로고침 → 같은 version 복원    |
-| 메뉴 Back · Chromium / WebKit                    | 설정/중첩 안내/확대 닫기, 게임 나가기 확인, 홈 유지·재로딩 통과    |
-| 바닥패 2장/3장 · Chromium / WebKit               | 폭의 1/3 겹침·확대, 필수 패 선택 Back 상태불변 통과                |
-| 타격/뒤집기 · Chromium / WebKit                  | 선택 전 타격 보류, 개별 타격 좌표, 덱 양면 회전, 빈 슬롯 직접 착지 |
-| 네이티브 닫기 · Chromium / WebKit                | 손패 확대 Escape 닫기, 게임 대기실 확인, 필수 선택 유지            |
-| production PWA · Chromium                        | 첫 로드 캐시 → offline 새로고침 → 싱글 패 내기, debug 비노출       |
+| 검증                                             | 결과                                                                  |
+| ------------------------------------------------ | --------------------------------------------------------------------- |
+| Vitest 엔진/legacy 방/fixture/Firebase host 71개 | 통과                                                                  |
+| seed 0–999 전체 판 AI 시뮬레이션                 | 모두 종료, 매 action 50장/턴 보존                                     |
+| TypeScript strict                                | 통과                                                                  |
+| Next.js 16.3.8 production standalone build       | 통과                                                                  |
+| 360×800 / 375×812 / 390×844 / 412×915 · Chromium | 4개 통과, 페이지 스크롤 없음                                          |
+| 동일 4개 viewport · WebKit                       | 4개 통과, 확대/설정 조작                                              |
+| 싱글 3판 · Chromium                              | 고/스톱, 종료 결과, 다음 판 통과                                      |
+| 멀티 2 context · Chromium                        | 생성/URL 참여, 바닥/점수/턴/종료/다음 판 동일                         |
+| Firebase Auth/Rules/실제 SDK · 에뮬레이터 6개    | 익명 UID, 정원2, 권한, invalid/중복 행동, 선택/고, 재접속/나가기 통과 |
+| Firebase 실제 수신 상태 · 두 browser context     | 전체 GameState 동일, 손패/덱 원본 존재 확인, 상대 UI는 뒷면           |
+| 재접속 · Chromium                                | B offline → A 연결 대기 → B online/새로고침 → 같은 version 복원       |
+| 메뉴 Back · Chromium / WebKit                    | 설정/중첩 안내/확대 닫기, 게임 나가기 확인, 홈 유지·재로딩 통과       |
+| 바닥패 2장/3장 · Chromium / WebKit               | 폭의 1/3 겹침·확대, 필수 패 선택 Back 상태불변 통과                   |
+| 타격/뒤집기 · Chromium / WebKit                  | 선택 전 타격 보류, 개별 타격 좌표, 덱 양면 회전, 빈 슬롯 직접 착지    |
+| 네이티브 닫기 · Chromium / WebKit                | 손패 확대 Escape 닫기, 게임 대기실 확인, 필수 선택 유지               |
+| production PWA · Chromium                        | 첫 로드 캐시 → offline 새로고침 → 싱글 패 내기, debug 비노출          |
 
-`npm test`, `npm run typecheck`, `npm run test:e2e`, `npm run build`, `npm run test:pwa`로 재현. Playwright report/trace는 git 제외. 모바일 스크린샷은 `test-results/mobile-*.png`; 대표 화면은 `docs/screenshots`.
+`npm test`, `npm run test:firebase`, `npm run typecheck`, `npm run test:e2e`, `npm run build`, `npm run test:pwa`로 재현. Playwright report/trace는 git 제외. 모바일 스크린샷은 `test-results/mobile-*.png`; 대표 화면은 `docs/screenshots`.
 
 화면·게임·뒤로가기 E2E는 총 22개다. 손패 버튼의 월 텍스트 제거, 첫 화면 문구 제거, 토끼맞고 제목도 확인한다. 실제 Android의 하드웨어/제스처 Back 및 키보드가 열린 상태의 Back은 출시 전 실기기 확인 항목이다.
 
@@ -38,7 +39,7 @@ Deck: 48 기본 + 쌍피 2 = 50, 12월×4, 고유 ID, seed 재현, shuffle ident
 
 보너스: 초기 floor / hand 보충 / 연속 deck reveal / 뻑 floor 부착 / 둘 다 획득4피 / 보너스 단독 탈취 없음.
 
-보안: 서버가 클라이언트 player 값을 덮어씀, 현재 turn/phase/소유권 검증, 중복 sequence 상태불변, 오래된 version 거절, 이전 round 거절, 무효 token 거절. 각 projection에 상대 hand/future deck 없음. 정상적인 흔들기는 선언한 세 장만 공개되므로 그 세 장은 더 이상 숨김 정보가 아니다.
+보안: Firebase Rules로 비인증/비참가자 접근, guest의 state 쓰기, 타인 action 쓰기/재작성, guest slot 변경을 거절. 동시 guest 트랜잭션에서 1명만 성공. Host는 UID로 player를 덮어쓰고 턴/phase/소유권, sequence/round/stateVersion을 검증한다. UI projection에는 상대 hand/future deck이 없지만 Firebase 원본은 두 참가자가 조회 가능하다. 기존 서버 token/projection 테스트는 legacy 회귀 기록으로 보존한다.
 
 ## 수동 브라우저 확인
 
@@ -54,8 +55,8 @@ Codex 내장 브라우저 390×844에서 홈, 실제패 기본 속도의 내 패
 - 작은 기기에서 광/열끗/띠/피 그림을 실제 화투 사용자들이 구별하는지; Marcus Richert 원본 화투 디자인 시인성 검토.
 - 가장 많은 바닥패/획득패, 여러 폭탄, 고 횟수, orientation 복귀, 큰 OS 글자 설정.
 - 한게임 실제 2026 맞고 앱의 세부 동작과 RULES.md의 명시적 해석(선고르기, 동시총통, 고박, 마지막 특수 예외)을 비교 확인.
-- production TLS/WS proxy, FRONTEND_ORIGIN, 다중 기기 접속, 서버 재시작 운영 대응.
+- 실제 Firebase Console Rules Publish 및 Vercel 환경변수 등록 후, 운영 URL에서 두 폰 접속·초대·선택·고/스톱·다음 판·나가기 확인.
 
 ## 알려진 운영 한계
 
-MemoryRoomStore는 서버 재시작을 넘어서 보존하지 않는다. 한 프로세스/한 replica 기준. 끊긴 방은 모두 끊어진 시점부터 30분 유지. 장기 영속/다중 replica는 저장소/adapter/원자 업데이트 추가 필요. 인터넷 서비스로 실제 배포하거나 실기기 상용 품질을 인증한 상태는 아니다.
+Firebase Emulator Suite 검증이며 운영 DB/실제 스마트폰 검증은 수행하지 않았다. 방장 브라우저가 끊기면 판정이 멈춘다. 익명 UID 분실 복구·방장 교체·치팅 방지는 없다. 방은 24시간 유효하고 명시적 나가기는 삭제하며 버려진 방은 제한적 클라이언트 정리/Console 수동 정리가 필요하다. Firebase 무료 사용량 한도가 있다. Legacy MemoryRoomStore의 재시작/replica 한계는 현재 운영 경로와 무관하다.
