@@ -8,13 +8,13 @@ PLAY / SELECT_FLOOR / GO_STOP / FINISHED. 턴 보류 카드는 `TurnState`에 �
 
 ## 프런트엔드
 
-Next.js App Router + React. 화면은 한국어 모바일 전용 세로 게임판. 한글 제품명은 토끼맞고, 영어 저장소 이름은 toki-matgo. 손패는 5 × 2이고 월 표식을 붙이지 않는다. 상대 손패는 실제 장수만큼 뒷면, 획득은 광/열끗/띠/피 그룹. 패 내기·먹을 패 선택은 엔진 action에 연결되며 바닥패 확대는 UI 상태만 바꾼다. 같은 월의 바닥패는 각 폭의 1/3만 겹쳐 뒷패의 2/3가 보인다. 맞는 손패는 노란 테두리 빛으로 표시한다. 두 장 중 선택이 필요한 경우 손패·뒤집은 패의 타격을 보류하고 SELECT_FLOOR 후 선택한 개별 패의 좌표로 이동한다. 덱 위치에서 앞뒤 면을 회전하며 뒤집고, 맞지 않으면 숨긴 실제 빈 바닥 슬롯을 먼저 확보해 직접 이동한다. 타격은 작은 회전과 눌림·반동, 착지 시 소리/진동으로 표시하며 타격한 패 위에 비스듬히 유지한 뒤 획득한다.
+Next.js App Router + React. 화면은 한국어 모바일 전용 세로 게임판. 한글 제품명은 토끼맞고, 영어 저장소 이름은 toki-matgo. 손패는 5 × 2이고 월 표식을 붙이지 않는다. 상대 손패는 실제 장수만큼 뒷면, 획득은 광/열끗/띠/피 그룹. 패 내기·먹을 패 선택은 엔진 action에 연결되며 바닥패 확대는 UI 상태만 바꾼다. 같은 월의 바닥패는 각 폭의 1/3만 겹쳐 뒷패의 2/3가 보인다. 맞는 손패는 노란 테두리 빛으로 표시한다. 두 장 중 선택이 필요한 경우 손패·뒤집은 패의 타격을 보류하고 SELECT_FLOOR 후 선택한 개별 패의 좌표로 이동한다. 덱 위치에서 앞뒤 면을 회전하며 뒤집고, 맞지 않으면 숨긴 실제 빈 바닥 슬롯을 먼저 확보해 직접 이동한다. 바닥은 월순으로 재정렬하지 않는다. `floor-layout.ts`가 월별 자리와 개별 패의 겹침 위치를 유지하고, 새 패는 빈 자리에 들어간다. 판 전체에 간격이 다른 좌표를 사용하며 덱 폭을 줄였다. 타격은 네 가지 회전·어긋남 중 하나로 재생하고, 충격 고리와 빛줄기·소리·진동을 더한다. 효과 글자는 이동 중인 패보다 높은 레이어에서 표시한다.
 
-`useAppBack`은 Next의 history 필드를 유지하는 같은 URL의 보호 entry를 만든다. 첫 실제 사용자 입력 때에도 한 번 활성화하며, 매 화면 렌더마다 history를 늘리지 않는다. CloseWatcher를 지원하는 브라우저에서는 열린 dialog가 네이티브 Android Back/Escape를 받고, dialog가 없을 때만 앱 CloseWatcher가 대기실 복귀 확인을 연다. native close 이벤트도 React의 창 상태에 반영한다. 미지원 브라우저나 history Back은 보호 entry를 복구하고 최상위 dialog의 cancel 동작을 실행한다. 설정 → 맞고 안내 등의 중첩 창은 한 단계씩 닫힌다. 열린 창이 없으면 친구 입력 화면은 홈으로, 게임/대기실은 나가기 확인으로 이동한다. 홈에서는 홈을 유지한다. 필수 패 선택·고/스톱·결과 창은 기존의 취소 불가 판정을 유지한다. 이벤트 listener는 unmount 때 모두 해제한다.
+`useAppBack`은 Next의 history 필드를 유지하는 같은 URL의 보호 entry를 만든다. 첫 실제 사용자 입력 때 base와 guard를 새로 만들어 Chrome이 입력 전 기록을 건너뛰는 경우를 방어하며, 매 화면 렌더마다 history를 늘리지 않는다. 열린 native dialog가 Android Back/Escape를 받고 별도의 앱 CloseWatcher는 만들지 않는다. 창이 없는 Escape는 keyup에서 대기실 복귀 확인을 연다. native close 이벤트도 React의 창 상태에 반영한다. 미지원 브라우저나 history Back은 보호 entry를 복구하고 최상위 dialog의 cancel 동작을 실행한다. 설정 → 맞고 안내 등의 중첩 창은 한 단계씩 닫힌다. 열린 창이 없으면 친구 입력 화면은 홈으로, 게임/대기실은 나가기 확인으로 이동한다. 홈에서는 홈을 유지한다. 필수 패 선택·고/스톱·결과 창은 기존의 취소 불가 판정을 유지한다. 게임·대기실이나 열린 팝업에서 실제 문서 이탈이 발생하면 beforeunload로 브라우저 확인을 요청한다. 새로고침에도 이 확인이 표시될 수 있다. 이벤트 listener는 unmount 때 모두 해제한다.
 
 싱글플레이 authoritative state는 React 밖 ref에 있고 UI는 `projectState`만 렌더링. CPU `chooseAction`도 동일한 개인별 projection만 받는다. 멀티플레이 타입은 type-only import, Firebase transport는 친구와 치기 진입 때 동적으로 로드한다.
 
-UI presenter가 events를 직렬 재생하고 마지막에 authoritative projection으로 맞춘다. 손패 이동 400ms, 매칭 400ms, 뒤집기 400ms + 확인 650ms, 회수 450ms, 점수 350ms, 특수 850ms. 속도는 1 / 0.65 / 0.35, reduced motion 0.12. CPU 대기 700–1400ms. 이탈/새 판 때 generation token으로 이전 연출을 무효화한다. Firebase 상태 수신과 애니메이션은 분리된다.
+UI presenter가 events를 직렬 재생하고 마지막에 authoritative projection으로 맞춘다. 손패 이동 400ms, 매칭 400ms, 뒤집기 400ms + 확인 650ms, 회수 450ms, 점수 350ms, 특수 850ms. 속도는 1 / 0.65 / 0.35, reduced motion 0.12. CPU 대기 700–1400ms. 싱글 새 판은 선 안내에서 게임 시작을 누를 때까지 CPU 행동과 손패 입력을 대기한다. 이탈/새 판 때 generation token으로 이전 연출을 무효화한다. Firebase 상태 수신과 애니메이션은 분리된다.
 
 ## Firebase transport와 방장 판정
 

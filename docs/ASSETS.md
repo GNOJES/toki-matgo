@@ -15,6 +15,6 @@
 
 ## 보너스·뒷면·아이콘·소리
 
-보너스 쌍피 2장은 흰 바탕·빨간 테두리·굵은 검은 식물 실루엣으로 새로 제작한 SVG다. 매화와 대나무 두 무늬에 큰 쌍피 글자와 二 표식을 넣었다. 뒷면과 앱 아이콘은 기존 직접 제작한 SVG를 유지한다. 생성 소스는 `scripts/generate-card-extras.mjs`. 이들은 위 작가의 48장 세트에 포함되지 않는다. 소리는 Web Audio로 생성한 짧은 잡음이며 외부 게임 사운드를 사용하지 않는다.
+보너스 쌍피 2장은 크림색 바탕·빨간 테두리·검은 선의 토끼 그림과 큰 숫자 2를 넣은 자체 제작 SVG다. 빨강·초록 배경과 서로 다른 귀 모양으로 구분한다. [한게임 공식 보너스패 안내](https://hangame-images.toastoven.net/hangame/pc/gostop/introduce/html/duelgo/guide_duelgo03_04.html)의 큰 숫자와 캐릭터 구성을 참고했으며 원본 그림을 복사하지 않았다. 뒷면과 앱 아이콘은 기존 직접 제작한 SVG를 유지한다. 생성 소스는 `scripts/generate-card-extras.mjs`. 이들은 위 작가의 48장 세트에 포함되지 않는다. 소리는 Web Audio로 생성한 짧은 잡음이며 외부 게임 사운드를 사용하지 않는다.
 
-PWA 캐시 버전은 `toki-v4-card-action`이다. 기존 캐시를 정리하고 WebP 48장과 최신 화면을 미리 저장한다.
+PWA 캐시 버전은 `toki-v6-felt-back`이다. 기존 캐시를 정리하고 WebP 48장과 최신 화면을 미리 저장한다.

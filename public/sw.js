@@ -1,4 +1,4 @@
-const CACHE = 'toki-v5-firebase';
+const CACHE = 'toki-v6-felt-back';
 const CARDS = Array.from({ length: 12 }, (_, m) =>
   Array.from({ length: 4 }, (_, v) => `/cards/m${m + 1}-${v}.webp`),
 ).flat();

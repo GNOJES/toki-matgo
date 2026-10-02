@@ -8,13 +8,14 @@ test('production caches first load, reloads offline, plays single and hides debu
   await page.goto('/?debug=1');
   await page.getByRole('button', { name: /혼자 치기/ }).click();
   await expect(page.getByTestId('game-table')).toBeVisible();
+  await page.getByRole('button', { name: '게임 시작', exact: true }).click();
   await expect(page.getByRole('button', { name: '개발', exact: true })).toHaveCount(0);
   await expect
     .poll(() =>
       page.evaluate(async () => {
         const reg = await navigator.serviceWorker.getRegistration();
         if (!reg?.active) return false;
-        const cache = await caches.open('toki-v5-firebase');
+        const cache = await caches.open('toki-v6-felt-back');
         const keys = await cache.keys();
         return (
           keys.filter((r) => r.url.includes('/_next/static/')).length >= 3 &&
@@ -33,6 +34,7 @@ test('production caches first load, reloads offline, plays single and hides debu
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await page.getByRole('button', { name: /혼자 치기/ }).click();
   await expect(page.getByTestId('game-table')).toBeVisible();
+  await page.getByRole('button', { name: '게임 시작', exact: true }).click();
   await expect
     .poll(() =>
       page

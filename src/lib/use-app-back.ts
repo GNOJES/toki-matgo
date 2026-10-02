@@ -1,82 +1,73 @@
 'use client';
 import { useEffect, useRef } from 'react';
 
-/** Keep browser/Android Back inside the app, closing the foremost dialog first. */
-export function useAppBack(onBack: () => void) {
+/** Real gesture history anchors + native dialog close requests. */
+export function useAppBack(onBack: () => void, protect = true) {
   const callback = useRef(onBack);
-  const url = useRef('');
+  const currentUrl = useRef('');
+  if (typeof window !== 'undefined') currentUrl.current = window.location.href;
+  const protectedRef = useRef(protect);
   callback.current = onBack;
-  if (typeof window !== 'undefined') url.current = window.location.href;
+  protectedRef.current = protect;
   useEffect(() => {
-    const pushGuard = () => {
-      // Preserve Next's history fields so its router can restore this same document.
-      history.pushState({ ...history.state, __tokiBack: 'guard' }, '', url.current);
-    };
+    const url = () => window.location.href;
+    const pushGuard = () =>
+      history.pushState({ ...history.state, __tokiBack: 'guard' }, '', currentUrl.current);
+    // Keep a fallback for history.back(); browser toolbar Back may skip this
+    // initial entry until real user activation. The gesture creates fresh anchors.
     if (history.state?.__tokiBack !== 'guard') {
-      history.replaceState({ ...history.state, __tokiBack: 'base' }, '', url.current);
+      history.replaceState({ ...history.state, __tokiBack: 'base' }, '', url());
       pushGuard();
     }
     let activated = false;
-    const armFromGesture = () => {
+    const arm = () => {
       if (activated) return;
       activated = true;
-      // Chrome can skip entries created without user activation. Arm once on a
-      // real interaction too; do not add entries for every screen/modal render.
-      history.replaceState({ ...history.state, __tokiBack: 'base' }, '', url.current);
+      // Do not merely relabel the pre-activation entry: create BOTH anchors
+      // during a real gesture so Chrome's history intervention cannot skip them.
+      history.pushState({ ...history.state, __tokiBack: 'base' }, '', url());
       pushGuard();
     };
     const back = () => {
       pushGuard();
       const dialogs = document.querySelectorAll<HTMLDialogElement>('.app dialog[open]');
-      const focused = document.activeElement?.closest<HTMLDialogElement>('dialog[open]');
-      const foremost = focused ?? dialogs[dialogs.length - 1];
-      if (foremost) {
-        // Use the same close/cancel behavior as Escape and Android's dialog Back.
-        // Required game decisions deliberately keep their no-op cancel handler.
-        foremost.dispatchEvent(new Event('cancel', { cancelable: true }));
-      } else callback.current();
+      const foremost = dialogs[dialogs.length - 1];
+      if (foremost) foremost.dispatchEvent(new Event('cancel', { cancelable: true }));
+      else callback.current();
     };
-    // Native Android Back is a close request before it becomes history navigation.
-    // Let modal dialogs own that request; watch the game itself when no dialog is open.
-    type Watcher = EventTarget & { destroy: () => void };
-    const NativeWatcher = (window as unknown as { CloseWatcher?: new () => Watcher }).CloseWatcher;
-    let watcher: Watcher | undefined;
-    let disposed = false;
-    const armNative = () => {
-      if (!NativeWatcher || disposed) return;
-      if (document.querySelector('.app dialog[open]')) {
-        watcher?.destroy();
-        watcher = undefined;
-        return;
-      }
-      if (watcher) return;
-      watcher = new NativeWatcher();
-      watcher.addEventListener('close', () => {
-        watcher = undefined;
-        callback.current();
-        queueMicrotask(armNative);
-      });
+    // Native <dialog> owns Android close requests. An extra app CloseWatcher
+    // can share its activation group and close the game along with the popup.
+    const unload = (event: BeforeUnloadEvent) => {
+      if (!protectedRef.current && !document.querySelector('.app dialog[open]')) return;
+      event.preventDefault();
+      event.returnValue = '';
     };
-    const observer = new MutationObserver(armNative);
-    observer.observe(document.body, {
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['open'],
-      childList: true,
-    });
-    armNative();
-    window.addEventListener('pointerdown', armNative, true);
+    let bareEscape = false;
+    const escapeDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      bareEscape = !document.querySelector('.app dialog[open]');
+      if (bareEscape) e.preventDefault();
+    };
+    const escapeUp = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (bareEscape) callback.current();
+      bareEscape = false;
+    };
+    window.addEventListener('keydown', escapeDown, true);
+    window.addEventListener('keyup', escapeUp);
     window.addEventListener('popstate', back);
-    window.addEventListener('pointerdown', armFromGesture, { once: true, capture: true });
-    window.addEventListener('keydown', armFromGesture, { once: true, capture: true });
+    window.addEventListener('pointerdown', arm, true);
+    window.addEventListener('click', arm, true);
+    window.addEventListener('keydown', arm, true);
+    window.addEventListener('beforeunload', unload);
     return () => {
-      disposed = true;
-      observer.disconnect();
-      watcher?.destroy();
-      window.removeEventListener('pointerdown', armNative, true);
+      window.removeEventListener('keydown', escapeDown, true);
+      window.removeEventListener('keyup', escapeUp);
       window.removeEventListener('popstate', back);
-      window.removeEventListener('pointerdown', armFromGesture, true);
-      window.removeEventListener('keydown', armFromGesture, true);
+      window.removeEventListener('pointerdown', arm, true);
+      window.removeEventListener('click', arm, true);
+      window.removeEventListener('keydown', arm, true);
+      window.removeEventListener('beforeunload', unload);
     };
   }, []);
 }

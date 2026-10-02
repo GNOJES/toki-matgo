@@ -1,25 +1,16 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 mkdirSync('public/cards', { recursive: true });
-const ink = '#191c19',
-  green = '#234f36',
-  red = '#cb302c',
-  blue = '#204a94',
-  paper = '#fff9e9';
-const path = (d, fill = ink, extra = '') => `<path d="${d}" fill="${fill}" ${extra}/>`;
-const flower = (x, y, r, color = red) =>
-  `<g transform="translate(${x} ${y})">${[0, 60, 120, 180, 240, 300].map((a) => `<ellipse cx="0" cy="-${r * 0.65}" rx="${r * 0.48}" ry="${r * 0.65}" fill="${color}" stroke="${ink}" stroke-width=".7" transform="rotate(${a})"/>`).join('')}<circle r="${r * 0.24}" fill="#ead78d"/></g>`;
-// Original project artwork: flat red rims, white paper and bold black botanical
-// silhouettes match the traditional deck without borrowing its licensed paths.
-const blossom = (x, y, r) =>
-  `<g transform="translate(${x} ${y})">${[0, 72, 144, 216, 288].map((a) => `<ellipse cy="-${r * 0.52}" rx="${r * 0.44}" ry="${r * 0.6}" fill="#fff" stroke="#111" stroke-width="1.2" transform="rotate(${a})"/>`).join('')}<circle r="${r * 0.2}" fill="#ed1c24"/></g>`;
+// Original rabbit service cards: bold numeral + mascot, inspired by the
+// readable bonus-card composition in Hangame's official guide (no copied art).
 for (let i = 0; i < 2; i++) {
-  const motif =
+  const accent = i === 0 ? '#d52b27' : '#204d37';
+  const ears =
     i === 0
-      ? `<path d="M5 96L17 78L11 58L15 45L20 58L20 72L31 62L41 64L27 72L24 90L38 98Z" fill="#111"/>${blossom(15, 60, 7)}${blossom(28, 78, 6)}${blossom(10, 85, 5)}<path d="M40 13L55 5L59 9L44 20Z" fill="#111"/>${blossom(49, 14, 7)}`
-      : `<path d="M8 98L12 61L14 61L12 98ZM20 98L22 74L24 74L24 98ZM48 5L46 31L48 31L52 5Z" fill="#111"/><g fill="#008542" stroke="#111" stroke-width=".7"><path d="M13 68Q2 56 5 51Q14 57 13 68ZM14 75Q30 61 33 64Q27 75 14 75ZM12 86Q2 74 4 70Q12 74 12 86ZM24 88Q37 75 41 78Q34 87 24 88ZM49 13Q33 10 31 5Q43 3 49 13ZM48 22Q58 15 60 9Q62 20 48 22Z"/></g>`;
+      ? '<path d="M20 32Q8 4 18 9Q28 13 27 32M33 31Q32 7 41 9Q48 16 40 34" fill="#fff8dc" stroke="#151711" stroke-width="1.8"/>'
+      : '<path d="M22 32Q13 5 23 9Q31 16 29 32M36 32Q38 8 47 16Q52 24 42 35" fill="#fff8dc" stroke="#151711" stroke-width="1.8"/>';
   writeFileSync(
     `public/cards/bonus-${i}.svg`,
-    `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="417" viewBox="0 0 64 100"><rect width="64" height="100" rx="2" fill="#ed1c24"/><rect x="3" y="3" width="58" height="94" fill="#fff"/>${motif}<path d="M4 29H60M4 74H60" stroke="#111" stroke-width="1.2"/><rect x="12" y="29" width="40" height="45" fill="#fff"/><text x="32" y="51" text-anchor="middle" font-family="serif" font-weight="900" font-size="23" fill="#111">쌍</text><text x="32" y="72" text-anchor="middle" font-family="serif" font-weight="900" font-size="23" fill="#111">피</text><rect x="46" y="80" width="11" height="13" fill="#ed1c24"/><text x="51.5" y="90" text-anchor="middle" font-family="serif" font-weight="bold" font-size="10" fill="#fff">二</text></svg>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="417" viewBox="0 0 64 100"><rect width="64" height="100" rx="2" fill="#ed1c24"/><rect x="3" y="3" width="58" height="94" fill="#fff9e5"/><path d="M4 4H60V19L32 27L4 19Z" fill="${accent}"/><path d="M8 7L15 14L8 21M56 7L49 14L56 21" fill="none" stroke="#e7b956" stroke-width="1.6"/><path d="M4 67Q32 56 60 67V96H4Z" fill="${accent}"/><path d="M5 65Q32 57 59 65" fill="none" stroke="#e7b956" stroke-width="2"/>${ears}<ellipse cx="32" cy="43" rx="20" ry="17" fill="#fff8dc" stroke="#151711" stroke-width="1.8"/><path d="M12 46Q8 40 10 35M52 46Q57 40 54 35" fill="none" stroke="#151711" stroke-width="1.3"/><ellipse cx="24" cy="41" rx="2.1" ry="3" fill="#151711"/><ellipse cx="40" cy="41" rx="2.1" ry="3" fill="#151711"/><path d="M29 45Q32 42 35 45L32 48Z" fill="#d52b27"/><path d="M26 49Q32 57 38 49M32 48V52" fill="none" stroke="#151711" stroke-width="1.4"/><ellipse cx="18" cy="47" rx="4" ry="2.7" fill="#ef8471"/><ellipse cx="46" cy="47" rx="4" ry="2.7" fill="#ef8471"/><path d="M19 57L32 61L45 57L42 66H22Z" fill="#e7b956" stroke="#151711" stroke-width="1"/><text x="32" y="92" text-anchor="middle" font-size="34" font-weight="900" font-family="Georgia,serif" fill="#fff9e5" stroke="#151711" stroke-width=".6">2</text><path d="M9 76L12 80L9 84L6 80ZM55 76L58 80L55 84L52 80Z" fill="#e7b956"/><text x="32" y="7" text-anchor="middle" font-size="6" font-weight="900" font-family="sans-serif" fill="#fff9e5">쌍피</text></svg>`,
   );
 }
 writeFileSync(

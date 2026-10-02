@@ -61,6 +61,7 @@ for (const [width, height] of [
     await page.goto('/');
     await page.getByRole('button', { name: /혼자 치기/ }).click();
     await game(page);
+    await page.getByRole('button', { name: '게임 시작', exact: true }).click();
     const rects = await page.locator('[data-testid]').evaluateAll((els) =>
       els.map((el) => ({
         name: el.getAttribute('data-testid'),

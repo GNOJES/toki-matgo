@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { flushSync } from 'react-dom';
 import QRCode from 'qrcode';
 import { cardFlight, type FlightGeometry } from '../lib/card-motion';
+import { syncFloorLayout, FLOOR_PLACES, type FloorLayout } from '../lib/floor-layout';
 import { useAppBack } from '../lib/use-app-back';
 import { Card } from './Card';
 import { Modal } from './Modal';
@@ -75,6 +76,9 @@ export function MatgoApp() {
   const [round, setRound] = useState(1);
   const roundRef = useRef(1);
   const [stats, setStats] = useState<Stats>(emptyStats);
+  const [dealerNotice, setDealerNotice] = useState(false);
+  const floorLayout = useRef<FloorLayout>(new Map());
+  const [impact, setImpact] = useState<{ key: number; x: number; y: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [status, setStatus] = useState('');
@@ -86,13 +90,16 @@ export function MatgoApp() {
     other: boolean;
     geometry: FlightGeometry;
     duration: number;
+    strike?: { angle: number; dx: number; dy: number; swing: number };
   } | null>(null);
   const waitingFlight = useRef<
     Partial<
       Record<'hand' | 'deck', { cards: HwatuCard[]; geometry: FlightGeometry; mine: boolean }>
     >
   >({});
-  const [struck, setStruck] = useState<Record<string, { card: HwatuCard; angle: number }>>({});
+  const [struck, setStruck] = useState<
+    Record<string, { card: HwatuCard; angle: number; dx: number; dy: number }>
+  >({});
   const [landing, setLanding] = useState<string | null>(null);
   const [selected, setSelected] = useState<HwatuCard | null>(null);
   const [zoom, setZoom] = useState<{ cards: HwatuCard[]; title: string } | null>(null);
@@ -122,6 +129,7 @@ export function MatgoApp() {
   const touchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
   const publish = useCallback((v: GameView) => {
+    floorLayout.current = syncFloorLayout(floorLayout.current, v.floor);
     viewRef.current = v;
     setView(v);
   }, []);
@@ -187,7 +195,13 @@ export function MatgoApp() {
               const centerY = source.fromY + source.height / 2;
               geometry.fromX = centerX - geometry.width / 2;
               geometry.fromY = centerY - geometry.height / 2;
-              const angle = (motionKey % 9) - 4 || 3;
+              const strikes = [
+                { angle: -14, dx: -6, dy: 4, swing: -16 },
+                { angle: 12, dx: 7, dy: -3, swing: 18 },
+                { angle: -9, dx: 4, dy: 6, swing: -10 },
+                { angle: 17, dx: -5, dy: 1, swing: 14 },
+              ];
+              const strike = strikes[Math.floor(Math.random() * strikes.length)];
               setMotion({
                 key: motionKey++,
                 cards,
@@ -195,12 +209,19 @@ export function MatgoApp() {
                 other: !mine,
                 geometry,
                 duration: 440 * factor,
+                strike,
               });
               if (!(await pause(320))) return false;
+              if (targetId !== c.id)
+                setImpact({
+                  key: motionKey,
+                  x: geometry.toX + geometry.width / 2,
+                  y: geometry.toY + geometry.height / 2,
+                });
               feedback(prefsRef.current);
               if (!(await pause(120))) return false;
               if (targetId !== c.id && targetId)
-                setStruck((old) => ({ ...old, [targetId!]: { card: c, angle } }));
+                setStruck((old) => ({ ...old, [targetId!]: { card: c, ...strike } }));
               publish({ ...shown });
               setLanding(null);
               setMotion(null);
@@ -342,11 +363,13 @@ export function MatgoApp() {
           if (next.phase !== 'SELECT_FLOOR') {
             setMotion(null);
             setStruck({});
+            setImpact(null);
             waitingFlight.current = {};
           }
           setLanding(null);
           setHighlight([]);
           setStatus('');
+          setImpact(null);
           busyRef.current = false;
           setBusy(false);
           if (modeRef.current === 'multi')
@@ -361,6 +384,7 @@ export function MatgoApp() {
             busyRef.current = false;
             setMotion(null);
             setStruck({});
+            setImpact(null);
             setLanding(null);
             waitingFlight.current = {};
             setError('패 이동을 복구했어요. 계속 칠 수 있어요.');
@@ -409,12 +433,14 @@ export function MatgoApp() {
                   if (data.game) {
                     setScreen('game');
                     if (newRound) {
+                      floorLayout.current = new Map();
                       generation.current++;
                       queue.current = Promise.resolve();
                       busyRef.current = false;
                       setBusy(false);
                       setMotion(null);
                       setStruck({});
+                      setImpact(null);
                       setLanding(null);
                       waitingFlight.current = {};
                       publish(data.game);
@@ -497,12 +523,15 @@ export function MatgoApp() {
     };
   }, [connectRoom]);
   const startSingle = (previous?: GameState | null) => {
+    floorLayout.current = new Map();
+    setDealerNotice(false);
     generation.current++;
     queue.current = Promise.resolve();
     busyRef.current = false;
     setBusy(false);
     setMotion(null);
     setStruck({});
+    setImpact(null);
     setHighlight([]);
     setStatus('');
     setLanding(null);
@@ -534,6 +563,7 @@ export function MatgoApp() {
     logical.current = game;
     publish(projectState(game, 0));
     setScreen('game');
+    setDealerNotice(!debug && !game.result);
     unlockAudio();
     if (game.result) recordResult(game);
   };
@@ -547,12 +577,15 @@ export function MatgoApp() {
             Number(seed),
           )
         : fixtures.createCustomDeal(JSON.parse(customDeal), Number(seed));
+      floorLayout.current = new Map();
+      setDealerNotice(false);
       generation.current++;
       queue.current = Promise.resolve();
       busyRef.current = false;
       setBusy(false);
       setMotion(null);
       setStruck({});
+      setImpact(null);
       setHighlight([]);
       setStatus('');
       setLanding(null);
@@ -635,6 +668,7 @@ export function MatgoApp() {
       mode !== 'single' ||
       screen !== 'game' ||
       busy ||
+      dealerNotice ||
       !view ||
       view.currentPlayer !== 1 ||
       view.phase === 'FINISHED' ||
@@ -653,6 +687,7 @@ export function MatgoApp() {
   }, [
     mode,
     screen,
+    dealerNotice,
     busy,
     view,
     prefs.difficulty,
@@ -665,12 +700,15 @@ export function MatgoApp() {
     exit,
   ]);
   const leave = () => {
+    floorLayout.current = new Map();
+    setDealerNotice(false);
     generation.current++;
     queue.current = Promise.resolve();
     busyRef.current = false;
     setBusy(false);
     setMotion(null);
     setStruck({});
+    setImpact(null);
     setHighlight([]);
     setStatus('');
     setLanding(null);
@@ -695,7 +733,7 @@ export function MatgoApp() {
     setSelected(null);
     if (screen === 'friends') leave();
     else if (screen === 'game' || screen === 'lobby') setExit(true);
-  });
+  }, screen !== 'home');
   const inviteUrl =
     typeof window !== 'undefined' && room ? `${window.location.origin}/?room=${room.code}` : '';
   useEffect(() => {
@@ -709,6 +747,7 @@ export function MatgoApp() {
   const canPlay =
     !!view &&
     !busy &&
+    !dealerNotice &&
     view.currentPlayer === me &&
     (mode === 'single' || (connected && !!room?.canAct));
   const nick = nickname.trim() || '나';
@@ -770,6 +809,9 @@ export function MatgoApp() {
               }}
             >
               토끼<span>맞고</span>
+              <span className="brand-rabbit" aria-hidden="true">
+                🐰
+              </span>
             </a>
             <button className="icon-button" aria-label="설정" onClick={() => setSettings(true)}>
               <SettingsIcon />
@@ -831,6 +873,9 @@ export function MatgoApp() {
             </button>
             <span className="brand">
               토끼<span>맞고</span>
+              <span className="brand-rabbit" aria-hidden="true">
+                🐰
+              </span>
             </span>
             <button className="icon-button" aria-label="설정" onClick={() => setSettings(true)}>
               <SettingsIcon />
@@ -893,6 +938,9 @@ export function MatgoApp() {
             </button>
             <span className="brand">
               토끼<span>맞고</span>
+              <span className="brand-rabbit" aria-hidden="true">
+                🐰
+              </span>
             </span>
           </header>
           <span className="eyebrow">화투판을 펼쳤어요</span>
@@ -924,6 +972,9 @@ export function MatgoApp() {
             </button>
             <span className="table-logo">
               토끼<span>맞고</span>
+              <span className="brand-rabbit" aria-hidden="true">
+                🐰
+              </span>
             </span>
             <span className="round">{round}번째 판</span>
             {mode === 'multi' && (
@@ -968,13 +1019,9 @@ export function MatgoApp() {
                 <small>남은 패</small>
               </span>
             </div>
-            <div
-              className={`floor-grid ${new Set(view.floor.filter((c) => !c.isBonus).map((c) => c.month)).size > 8 ? 'dense' : ''}`}
-              data-testid="floor-cards"
-            >
-              {Array.from(new Set(view.floor.map((c) => (c.isBonus ? 0 : c.month))))
-                .sort((a, b) => a - b)
-                .map((month) => (
+            <div className="floor-grid" data-testid="floor-cards">
+              {Array.from(new Set(view.floor.map((c) => (c.isBonus ? 0 : c.month)))).map(
+                (month) => (
                   <div
                     className="floor-month"
                     key={month}
@@ -982,6 +1029,8 @@ export function MatgoApp() {
                     style={
                       {
                         '--pile-count': view.floor.filter((c) => c.month === month).length,
+                        '--slot-x': `${FLOOR_PLACES[floorLayout.current.get(month)?.slot ?? 0][0]}%`,
+                        '--slot-y': `${FLOOR_PLACES[floorLayout.current.get(month)?.slot ?? 0][1]}%`,
                       } as CSSProperties
                     }
                   >
@@ -992,7 +1041,7 @@ export function MatgoApp() {
                           key={c.id}
                           style={
                             {
-                              '--pile-index': i,
+                              '--pile-index': floorLayout.current.get(month)?.cards.get(c.id) ?? i,
                               visibility: landing === c.id ? 'hidden' : undefined,
                             } as CSSProperties
                           }
@@ -1019,7 +1068,7 @@ export function MatgoApp() {
                               className="landed-card"
                               data-floor-card-id={struck[c.id].card.id}
                               style={{
-                                transform: `translate(2px, 1px) rotate(${struck[c.id].angle}deg)`,
+                                transform: `translate(${struck[c.id].dx}px, ${struck[c.id].dy}px) rotate(${struck[c.id].angle}deg)`,
                               }}
                             >
                               <Card card={struck[c.id].card} />
@@ -1028,8 +1077,22 @@ export function MatgoApp() {
                         </button>
                       ))}
                   </div>
-                ))}
+                ),
+              )}
             </div>
+            {impact && (
+              <div
+                key={`impact-${impact.key}`}
+                className="slap-impact"
+                aria-hidden="true"
+                style={{ left: impact.x, top: impact.y }}
+              >
+                <span className="impact-ring" />
+                {Array.from({ length: 6 }, (_, i) => (
+                  <i key={i} style={{ '--ray': `${i * 60 + 15}deg` } as CSSProperties} />
+                ))}
+              </div>
+            )}
             {motion && (
               <div
                 key={motion.key}
@@ -1045,7 +1108,10 @@ export function MatgoApp() {
                     '--duration': `${motion.duration}ms`,
                     '--motion-width': `${motion.geometry.width}px`,
                     '--motion-height': `${motion.geometry.height}px`,
-                    '--land-angle': `${(motion.key % 9) - 4 || 3}deg`,
+                    '--land-angle': `${motion.strike?.angle ?? 0}deg`,
+                    '--land-x': `${motion.strike?.dx ?? 0}px`,
+                    '--land-y': `${motion.strike?.dy ?? 0}px`,
+                    '--swing-angle': `${motion.strike?.swing ?? 0}deg`,
                   } as CSSProperties
                 }
               >
@@ -1235,6 +1301,24 @@ export function MatgoApp() {
             ))}
           </div>
           {!zoom.cards.length && <p className="muted">아직 먹은 패가 없어요.</p>}
+        </Modal>
+      )}
+      {dealerNotice && view && screen === 'game' && !exit && (
+        <Modal
+          title="이번 판의 선"
+          onClose={() => setDealerNotice(false)}
+          className="dealer-notice"
+        >
+          <div className="dealer-portrait">{view.dealer === 0 ? '🐰' : '🐇'}</div>
+          <p>
+            <strong>{view.dealer === 0 ? '내가 선이에요' : '토끼가 선이에요'}</strong>
+          </p>
+          <p>
+            {view.dealer === 0 ? '내 패부터 천천히 골라주세요.' : '준비되면 토끼가 먼저 패를 내요.'}
+          </p>
+          <button className="primary" onClick={() => setDealerNotice(false)}>
+            게임 시작
+          </button>
         </Modal>
       )}
       {special && (

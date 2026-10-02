@@ -553,11 +553,11 @@ strong {
   align-items: center;
   gap: 8px;
   position: relative;
-  width: 43px;
+  width: 30px;
   flex-shrink: 0;
 }
 .deck .hwatu {
-  width: 39px;
+  width: 27px;
   box-shadow:
     2px 3px #9c3028,
     3px 5px #1a2a20,
@@ -579,35 +579,34 @@ strong {
   margin-top: 4px;
 }
 .floor-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px 5px;
-  align-content: center;
+  position: relative;
   width: 100%;
-  max-height: 100%;
+  align-self: stretch;
+  min-height: 0;
+  container-type: inline-size;
 }
 .floor-month {
-  --floor-width: 48px;
-  position: relative;
-  height: 82px;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  --floor-width: clamp(29px, 14cqw, 43px);
+  position: absolute;
+  left: var(--slot-x);
+  top: var(--slot-y);
+  width: 32%;
+  height: calc(var(--floor-width) * 1.5625);
+  transform: translateY(-50%);
 }
 .floor-card {
-  position: relative;
+  position: absolute;
+  left: calc(var(--pile-index) * var(--floor-width) * 0.6667);
+  top: 0;
   padding: 0;
   min-height: 0;
-  width: min(var(--floor-width), calc(100% / (1 + (var(--pile-count) - 1) * 0.6667)));
-  flex: 0 0 auto;
-  min-width: 0;
+  width: var(--floor-width);
   cursor: zoom-in;
   outline-offset: 2px;
   transition: filter 180ms;
 }
 .floor-card + .floor-card {
-  margin-left: calc(min(var(--floor-width), 100% / (1 + (var(--pile-count) - 1) * 0.6667)) / -3);
+  margin-left: 0;
 }
 .landed-card {
   position: absolute;
@@ -632,15 +631,6 @@ strong {
   cursor: pointer;
   animation: breathe 1.5s infinite;
 }
-.floor-grid.dense {
-  gap: 6px 5px;
-}
-.floor-grid.dense .floor-month {
-  height: 60px;
-}
-.floor-grid.dense .floor-month {
-  --floor-width: 37px;
-}
 .pending-cards {
   position: absolute;
   top: 12px;
@@ -652,6 +642,7 @@ strong {
   width: 36px;
 }
 .turn-message {
+  z-index: 50;
   position: absolute;
   bottom: 5px;
   left: 0;
@@ -813,20 +804,21 @@ strong {
     filter: drop-shadow(0 14px 7px #0005);
   }
   45% {
-    transform: translate(calc(var(--to-x) + 5px), calc(var(--to-y) - 42px)) rotate(10deg)
-      scale(1.12);
+    transform: translate(calc(var(--to-x) + 5px), calc(var(--to-y) - 42px))
+      rotate(var(--swing-angle)) scale(1.12);
   }
   73% {
-    transform: translate(calc(var(--to-x) + 2px), calc(var(--to-y) + 2px)) rotate(var(--land-angle))
-      scale(1.06, 0.94);
+    transform: translate(calc(var(--to-x) + var(--land-x)), calc(var(--to-y) + var(--land-y)))
+      rotate(var(--land-angle)) scale(1.06, 0.94);
     filter: drop-shadow(0 1px 1px #0008);
   }
   85% {
-    transform: translate(calc(var(--to-x) + 2px), calc(var(--to-y) - 3px)) rotate(var(--land-angle))
-      scale(0.98, 1.03);
+    transform: translate(calc(var(--to-x) + var(--land-x)), calc(var(--to-y) - 3px))
+      rotate(var(--land-angle)) scale(0.98, 1.03);
   }
   100% {
-    transform: translate(calc(var(--to-x) + 2px), calc(var(--to-y) + 1px)) rotate(var(--land-angle));
+    transform: translate(calc(var(--to-x) + var(--land-x)), calc(var(--to-y) + var(--land-y)))
+      rotate(var(--land-angle));
     filter: drop-shadow(0 2px 1px #0006);
   }
 }
@@ -1138,20 +1130,8 @@ strong {
     padding-left: 9px;
     padding-right: 9px;
   }
-  .floor-month {
-    --floor-width: 43px;
-  }
-  .floor-month {
-    height: 73px;
-  }
   .hand-card .hwatu {
     width: 46px;
-  }
-  .floor-grid.dense .floor-month {
-    height: 55px;
-  }
-  .floor-grid.dense .floor-month {
-    --floor-width: 35px;
   }
   .hand-grid {
     gap: 6px;
@@ -1195,18 +1175,6 @@ strong {
   }
   .hand-grid {
     gap: 5px;
-  }
-  .floor-month {
-    height: 70px;
-  }
-  .floor-month {
-    --floor-width: 42px;
-  }
-  .floor-grid.dense .floor-month {
-    --floor-width: 30px;
-  }
-  .floor-grid.dense .floor-month {
-    height: 50px;
   }
   .opponent-hand .hwatu {
     width: 22px;
@@ -1278,4 +1246,71 @@ strong {
   background: #fffdf7;
   margin: 12px 0;
   resize: vertical;
+}
+
+.brand .brand-rabbit {
+  margin-left: 7px;
+  font-size: 23px;
+}
+.dealer-notice {
+  text-align: center;
+}
+.dealer-portrait {
+  font-size: 54px;
+  margin: 12px 0;
+}
+.dealer-notice strong {
+  font-size: 24px;
+}
+.slap-impact {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+}
+.impact-ring {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  border: 3px solid #ffe1a0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: impact-ring 430ms ease-out both;
+}
+.slap-impact i {
+  position: absolute;
+  width: 5px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff0b8;
+  box-shadow: 0 0 6px #ffc76e;
+  transform-origin: 50% 0;
+  animation: impact-ray 420ms ease-out both;
+}
+@keyframes impact-ring {
+  from {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(0.25);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.4);
+  }
+}
+@keyframes impact-ray {
+  from {
+    opacity: 1;
+    transform: rotate(var(--ray)) translateY(12px) scaleY(0.7);
+  }
+  to {
+    opacity: 0;
+    transform: rotate(var(--ray)) translateY(43px) scaleY(0.2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .impact-ring,
+  .slap-impact i {
+    animation-duration: 80ms;
+  }
 }
