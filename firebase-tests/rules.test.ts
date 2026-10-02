@@ -9,7 +9,7 @@ import {
 import { get, ref, set, runTransaction, update } from 'firebase/database';
 import { emptyHostState, encodeState } from '../src/multiplayer/host';
 let env: RulesTestEnvironment;
-const code = 'ABC234';
+const code = '0123';
 function data() {
   return {
     meta: {
@@ -49,7 +49,7 @@ it('unauthenticated users cannot read, create, join or submit actions; room list
     anonymous = env.unauthenticatedContext().database();
   await assertFails(get(ref(anonymous, `rooms/${code}`)));
   await assertFails(get(ref(anonymous, `rooms/${code}/meta`)));
-  await assertFails(set(ref(anonymous, 'rooms/DEF234'), data()));
+  await assertFails(set(ref(anonymous, 'rooms/4567'), data()));
   await assertFails(set(ref(anonymous, `rooms/${code}/meta/guestUid`), 'guest'));
   await assertFails(get(ref(db, 'rooms')));
 });
@@ -59,7 +59,7 @@ it('authenticated host creates with its UID and outsider cannot read state or ch
   await assertFails(get(ref(third, `rooms/${code}`)));
   await assertFails(get(ref(third, `rooms/${code}/state`)));
   await assertFails(update(ref(third, `rooms/${code}/meta`), { status: 'closed' }));
-  await assertFails(set(ref(third, 'rooms/DEF234'), data()));
+  await assertFails(set(ref(third, 'rooms/4567'), data()));
 });
 it('guest slot transaction admits only one of two simultaneous joiners', async () => {
   await create();
@@ -118,4 +118,22 @@ it('closed or expired rooms cannot be joined and participants may remove closed 
   });
   await assertFails(set(ref(guest, `rooms/${code}/meta/guestUid`), 'guest'));
   await assertSucceeds(set(ref(host, `rooms/${code}`), null));
+});
+
+it('only four digit codes can be created; expired codes can be reclaimed without exposing state', async () => {
+  const host = await create();
+  await assertFails(set(ref(host, 'rooms/ABC234'), data()));
+  await assertFails(set(ref(host, 'rooms/123'), data()));
+  const outsider = env.authenticatedContext('third').database();
+  await assertFails(set(ref(outsider, `rooms/${code}`), null));
+  await env.withSecurityRulesDisabled(async (c) => {
+    await set(ref(c.database(), `rooms/${code}/meta/expiresAt`), Date.now() - 1000);
+  });
+  await assertFails(get(ref(outsider, `rooms/${code}/state`)));
+  await assertSucceeds(set(ref(outsider, `rooms/${code}`), null));
+  const fresh = data();
+  fresh.meta.hostUid = 'third';
+  Object.assign(fresh, { players: { third: { name: '방장' } } });
+  await assertSucceeds(set(ref(outsider, `rooms/${code}`), fresh));
+  await assertFails(set(ref(host, `rooms/${code}`), null));
 });

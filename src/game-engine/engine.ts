@@ -481,6 +481,7 @@ export function projectState(s: GameState, player: PlayerId): GameView {
     hand: [...s.players[player].hand],
     floor: [...s.floor],
     deckCount: s.deck.length,
+    bonusAttachments: { ...s.bonusAttachments },
     currentPlayer: s.currentPlayer,
     dealer: s.dealer,
     dealerDraw: s.dealerDraw,

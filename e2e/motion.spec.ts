@@ -1,3 +1,4 @@
+import { openHandZoom } from './zoom-helper';
 import { test, expect, type Page } from '@playwright/test';
 
 async function observeFlights(page: Page) {
@@ -94,13 +95,13 @@ test('mobile native close requests dismiss hand popup then confirm return to lob
 }) => {
   await page.goto('/?debug=1');
   await page.getByRole('button', { name: /혼자 치기/ }).click();
-  await page.getByRole('button', { name: '손패 확대 ↗' }).click();
-  const popup = page.getByRole('dialog', { name: '내 손패 크게 보기' });
+  await openHandZoom(page);
+  const popup = page.locator('dialog.zoom-modal[open]');
   await expect(popup).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(popup).toHaveCount(0);
   await expect(page.getByTestId('game-table')).toBeVisible();
-  await page.getByRole('button', { name: '손패 확대 ↗' }).click();
+  await openHandZoom(page);
   await expect(popup).toBeVisible();
   // Native Android may close the dialog directly when cancellation is unavailable.
   await popup.evaluate((el) => (el as HTMLDialogElement).close());

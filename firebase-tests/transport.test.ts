@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, it, expect } from 'vitest';
+import { beforeAll, afterAll, it, expect, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { deleteApp, initializeApp, type FirebaseApp } from 'firebase/app';
@@ -11,6 +11,7 @@ import {
   goOnline,
   ref,
   runTransaction,
+  set,
 } from 'firebase/database';
 import { FirebaseTransport } from '../src/multiplayer/firebase-transport';
 import { decodeState, encodeState } from '../src/multiplayer/host';
@@ -181,6 +182,7 @@ it('real anonymous Auth, rooms, guest choice -> host transaction, invalid/duplic
   goOnline(host.db);
   await expect.poll(() => b?.connected[0]).toBe(true);
   gb.dispose();
+  b = undefined;
   const restored = await FirebaseTransport.open(
     {
       state: (m) => {
@@ -199,6 +201,75 @@ it('real anonymous Auth, rooms, guest choice -> host transaction, invalid/duplic
   await expect.poll(() => b?.connected.every(Boolean)).toBe(true);
   await restored.leave();
   await expect.poll(() => a?.closed).toBe(true);
-  expect((await get(ref(host.db, `rooms/${ha.code}/meta`))).exists()).toBe(false);
+  await expect
+    .poll(async () => (await get(ref(host.db, `rooms/${ha.code}/meta`))).exists())
+    .toBe(false);
+  await ha.leave();
+  await expect
+    .poll(async () => (await get(ref(host.db, `rooms/${ha.code}/meta`))).exists())
+    .toBe(false);
   expect(errors.filter((m) => !m.includes('종료'))).toEqual([]);
+});
+
+it('numeric allocation skips active collisions, reuses expired codes and defaults player names by role', async () => {
+  const first = await user(),
+    second = await user(),
+    joiner = await user();
+  const callbacks = { state: () => {}, connection: () => {}, error: () => {} };
+  const forceCode = (value: number) =>
+    vi.spyOn(crypto, 'getRandomValues').mockImplementationOnce((array) => {
+      (array as Uint32Array)[0] = Math.ceil((value / 10000) * 4294967296);
+      return array;
+    });
+  forceCode(123);
+  const active = await FirebaseTransport.open(callbacks, undefined, '', false, async () => first);
+  transports.push(active);
+  expect(active.code).toBe('0123');
+  await env.withSecurityRulesDisabled(async (c) => {
+    const old = (
+      await get(
+        ref(c.database('https://demo-toki-matgo-default-rtdb.firebaseio.com'), 'rooms/0123'),
+      )
+    ).val() as RoomData;
+    old.meta.expiresAt = Date.now() - 1000;
+    await set(
+      ref(c.database('https://demo-toki-matgo-default-rtdb.firebaseio.com'), 'rooms/0456'),
+      old,
+    );
+  });
+  const spy = vi.spyOn(crypto, 'getRandomValues');
+  spy.mockImplementationOnce((array) => {
+    (array as Uint32Array)[0] = Math.ceil((123 / 10000) * 4294967296);
+    return array;
+  });
+  spy.mockImplementationOnce((array) => {
+    (array as Uint32Array)[0] = Math.ceil((456 / 10000) * 4294967296);
+    return array;
+  });
+  const replacement = await FirebaseTransport.open(
+    callbacks,
+    undefined,
+    '',
+    false,
+    async () => second,
+  );
+  transports.push(replacement);
+  vi.restoreAllMocks();
+  expect(replacement.code).toBe('0456');
+  const occupied = (await get(ref(first.db, 'rooms/0123'))).val() as RoomData;
+  expect(occupied.meta.hostUid).toBe(first.uid);
+  const guest = await FirebaseTransport.open(
+    callbacks,
+    replacement.code,
+    '',
+    false,
+    async () => joiner,
+  );
+  transports.push(guest);
+  const room = (await get(ref(second.db, 'rooms/0456'))).val() as RoomData;
+  expect(room.meta.hostUid).toBe(second.uid);
+  expect(room.players![second.uid].name).toBe('방장');
+  expect(room.players![joiner.uid].name).toBe('참가자');
+  await guest.leave();
+  await active.leave();
 });

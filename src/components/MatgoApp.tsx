@@ -7,6 +7,7 @@ import { cardFlight, type FlightGeometry } from '../lib/card-motion';
 import { syncFloorLayout, FLOOR_PLACES, type FloorLayout } from '../lib/floor-layout';
 import { useAppBack } from '../lib/use-app-back';
 import { Card } from './Card';
+import { RabbitMark } from './RabbitMark';
 import { Modal } from './Modal';
 import { Settings } from './Settings';
 import { Captured } from './Captured';
@@ -108,6 +109,8 @@ export function MatgoApp() {
   const [rules, setRules] = useState(false);
   const [invite, setInvite] = useState(false);
   const [exit, setExit] = useState(false);
+  const [disconnectedSince, setDisconnectedSince] = useState<number | null>(null);
+  const [connectionSeconds, setConnectionSeconds] = useState(0);
   const [special, setSpecial] = useState<{ card: HwatuCard; bomb: boolean } | null>(null);
   const [qr, setQr] = useState('');
   const [error, setError] = useState('');
@@ -280,6 +283,10 @@ export function MatgoApp() {
               });
               if (!(await pause(420))) return;
               if (!(await pause(180))) return;
+              if (cards[0]?.isBonus) {
+                setMotion(null);
+                continue;
+              }
               const choice = events.some(
                 (event) => event.type === 'FLOOR_MATCH_REQUIRED' && event.stage === 'deck',
               );
@@ -428,6 +435,16 @@ export function MatgoApp() {
                   setMe(data.me);
                   setEntering(false);
                   if (data.closed) {
+                    generation.current++;
+                    busyRef.current = false;
+                    setBusy(false);
+                    setMotion(null);
+                    setImpact(null);
+                    setZoom(null);
+                    setSpecial(null);
+                    setInvite(false);
+                    setSettings(false);
+                    setRules(false);
                     setError('방이 종료되었어요. 대기실로 돌아가 새 방을 만들어주세요.');
                     return;
                   }
@@ -451,7 +468,7 @@ export function MatgoApp() {
                 },
               },
               code,
-              name || getItem('toki.nickname.v1') || '친구',
+              name ?? getItem('toki.nickname.v1') ?? '',
               !!_uid,
             );
             if (attempt !== connectionAttempt.current) {
@@ -765,6 +782,22 @@ export function MatgoApp() {
           setError(error instanceof Error ? error.message : '다음 판을 기다려주세요.'),
         );
   };
+  const interrupted =
+    mode === 'multi' && !!room && !room.closed && (!connected || !room.connected[1 - me]);
+  useEffect(() => {
+    if (!interrupted) {
+      setDisconnectedSince(null);
+      setConnectionSeconds(0);
+      return;
+    }
+    const since = Date.now();
+    setDisconnectedSince(since);
+    const timer = setInterval(
+      () => setConnectionSeconds(Math.floor((Date.now() - since) / 1000)),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, [interrupted]);
   const snapshotStatus =
     !connected && mode === 'multi'
       ? '연결을 복구하고 있어요'
@@ -796,9 +829,7 @@ export function MatgoApp() {
               }}
             >
               토끼<span>맞고</span>
-              <span className="brand-rabbit" aria-hidden="true">
-                🐰
-              </span>
+              <RabbitMark />
             </a>
             <button className="icon-button" aria-label="설정" onClick={() => setSettings(true)}>
               <SettingsIcon />
@@ -860,19 +891,17 @@ export function MatgoApp() {
             </button>
             <span className="brand">
               토끼<span>맞고</span>
-              <span className="brand-rabbit" aria-hidden="true">
-                🐰
-              </span>
+              <RabbitMark />
             </span>
             <button className="icon-button" aria-label="설정" onClick={() => setSettings(true)}>
               <SettingsIcon />
             </button>
           </header>
           <span className="eyebrow">우리 둘만의 화투판</span>
-          <h1>친구를 초대해요.</h1>
-          <p className="muted">회원가입 없이, 이름 하나면 충분해요.</p>
+          <h1>내 이름으로 함께해요.</h1>
+          <p className="muted">친구에게 표시될 내 이름을 먼저 적고, 방을 만들거나 참여하세요.</p>
           <label className="field">
-            어떻게 불러드릴까요?
+            내 이름 · 두 경우 모두 이 이름으로 참여해요
             <input
               value={nickname}
               onChange={(e) => {
@@ -880,36 +909,41 @@ export function MatgoApp() {
                 storeItem('toki.nickname.v1', e.target.value);
               }}
               maxLength={12}
-              placeholder="이름 또는 별명"
+              placeholder="친구 이름이 아닌, 내 이름 또는 별명"
               autoComplete="nickname"
             />
           </label>
           <button
             className="primary"
             disabled={entering}
-            onClick={() => connectRoom(undefined, undefined, nick)}
+            onClick={() => connectRoom(undefined, undefined, nickname.trim() || '방장')}
           >
-            방 만들기 <span>＋</span>
+            내 이름으로 방 만들기 <span>＋</span>
           </button>
-          <div className="or-divider">이미 방이 있다면</div>
+          <p className="name-help">
+            이름을 비우면 방을 만들 때는 방장, 참여할 때는 참가자로 표시돼요.
+          </p>
+          <div className="or-divider">친구가 만든 방에 들어가려면</div>
           <label className="field">
             친구가 알려준 방 코드
             <input
               className="room-input"
               value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ''))}
-              maxLength={6}
-              placeholder="6자리 코드"
-              autoCapitalize="characters"
+              onChange={(e) => setCodeInput(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+              maxLength={4}
+              placeholder="숫자 4자리 · 예: 0123"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              autoCapitalize="none"
               autoCorrect="off"
             />
           </label>
           <button
             className="secondary"
-            disabled={entering || codeInput.length !== 6}
-            onClick={() => connectRoom(codeInput, undefined, nick)}
+            disabled={entering || codeInput.length !== 4}
+            onClick={() => connectRoom(codeInput, undefined, nickname.trim() || '참가자')}
           >
-            방 코드로 참여 <span>→</span>
+            내 이름으로 참여 <span>→</span>
           </button>
           <p className="fine-print">
             같은 방의 두 사람만 패를 볼 수 있어요.
@@ -925,15 +959,16 @@ export function MatgoApp() {
             </button>
             <span className="brand">
               토끼<span>맞고</span>
-              <span className="brand-rabbit" aria-hidden="true">
-                🐰
-              </span>
+              <RabbitMark />
             </span>
           </header>
           <span className="eyebrow">화투판을 펼쳤어요</span>
           <h1>{room ? '친구를 기다려요.' : '화투판에 연결 중…'}</h1>
           <p className="muted">링크를 보내거나, 아래 코드를 알려주세요.</p>
           {room && <InviteContent code={room.code} url={inviteUrl} qr={qr} onError={setError} />}
+          <p className="fine-print">
+            방은 생성 후 24시간 유지됩니다. 나가기를 선택하면 두 사람의 방이 종료돼요.
+          </p>
           <p className="waiting-note">
             <span className="status-dot" />
             {connected ? '친구가 들어오면 함께 시작해요.' : '연결을 복구하고 있어요.'}
@@ -959,9 +994,7 @@ export function MatgoApp() {
             </button>
             <span className="table-logo">
               토끼<span>맞고</span>
-              <span className="brand-rabbit" aria-hidden="true">
-                🐰
-              </span>
+              <RabbitMark />
             </span>
             <span className="round">{round}번째 판</span>
             {mode === 'multi' && (
@@ -984,19 +1017,9 @@ export function MatgoApp() {
             active={view.currentPlayer !== me}
             dealer={view.dealer !== me}
             wins={stats.wins[1 - me]}
+            handCount={view.players[1 - me].handCount}
+            passes={view.players[1 - me].bombPasses}
           />
-          <div
-            className="opponent-hand"
-            data-testid="opponent-hand"
-            aria-label={`상대 손패 ${view.players[1 - me].handCount}장`}
-          >
-            {Array.from({ length: view.players[1 - me].handCount }, (_, i) => (
-              <Card key={i} back />
-            ))}
-            {view.players[1 - me].bombPasses > 0 && (
-              <span className="pass-badge">뒤집기 {view.players[1 - me].bombPasses}</span>
-            )}
-          </div>
           <Captured player={view.players[1 - me]} onZoom={zoomCards} />
           <div className="floor-area" data-testid="floor-area">
             <div className="deck" aria-label={`뒤집힌 덱 ${view.deckCount}장`}>
@@ -1006,66 +1029,98 @@ export function MatgoApp() {
                 <small>남은 패</small>
               </span>
             </div>
+            {interrupted && disconnectedSince && (
+              <div className="connection-banner" role="status">
+                <strong>
+                  {!connected ? '내 연결이 잠시 끊겼어요' : `${opponent}의 재접속을 기다려요`}
+                </strong>
+                <span>
+                  진행 중인 판을 보관했어요. 같은 기기로 돌아오면 이어서 칠 수 있어요. ·{' '}
+                  {connectionSeconds}초
+                </span>
+                {connectionSeconds >= 120 && (
+                  <button onClick={() => setExit(true)}>기다림을 끝내고 나가기</button>
+                )}
+              </div>
+            )}
             <div className="floor-grid" data-testid="floor-cards">
-              {Array.from(new Set(view.floor.map((c) => (c.isBonus ? 0 : c.month)))).map(
-                (month) => (
-                  <div
-                    className="floor-month"
-                    key={month}
-                    data-floor-month={month}
-                    style={
-                      {
-                        '--pile-count': view.floor.filter((c) => c.month === month).length,
-                        '--slot-x': `${FLOOR_PLACES[floorLayout.current.get(month)?.slot ?? 0][0]}%`,
-                        '--slot-y': `${FLOOR_PLACES[floorLayout.current.get(month)?.slot ?? 0][1]}%`,
-                      } as CSSProperties
-                    }
-                  >
-                    {view.floor
-                      .filter((c) => c.month === month)
-                      .map((c, i) => (
-                        <button
-                          key={c.id}
-                          style={
-                            {
-                              '--pile-index': floorLayout.current.get(month)?.cards.get(c.id) ?? i,
-                              visibility: landing === c.id ? 'hidden' : undefined,
-                            } as CSSProperties
-                          }
-                          data-floor-card-id={c.id}
-                          className={`floor-card ${view.options.includes(c.id) || highlight.includes(c.id) || selected?.month === c.month ? 'highlighted' : ''}`}
-                          onClick={() => {
-                            if (
-                              canPlay &&
-                              view.phase === 'SELECT_FLOOR' &&
-                              view.options.includes(c.id)
-                            )
-                              dispatch({ type: 'SELECT_FLOOR', player: me, cardId: c.id });
-                            else
-                              zoomCards(
-                                view.floor.filter((card) => card.month === month),
-                                '바닥패 크게 보기',
-                              );
-                          }}
-                          aria-label={`${c.name}${canPlay && view.phase === 'SELECT_FLOOR' && view.options.includes(c.id) ? ' 먹기' : ' 바닥패 확대'}`}
-                        >
-                          <Card card={c} />
-                          {struck[c.id] && (
-                            <span
-                              className="landed-card"
-                              data-floor-card-id={struck[c.id].card.id}
-                              style={{
-                                transform: `translate(${struck[c.id].dx}px, ${struck[c.id].dy}px) rotate(${struck[c.id].angle}deg)`,
-                              }}
-                            >
-                              <Card card={struck[c.id].card} />
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                  </div>
+              {Array.from(
+                new Set(
+                  view.floor.map((c) =>
+                    c.isBonus ? (view.bonusAttachments?.[c.id] ?? 0) : c.month,
+                  ),
                 ),
-              )}
+              ).map((month) => (
+                <div
+                  className="floor-month"
+                  key={month}
+                  data-floor-month={month}
+                  style={
+                    {
+                      '--pile-count': view.floor.filter(
+                        (c) =>
+                          (c.isBonus ? (view.bonusAttachments?.[c.id] ?? 0) : c.month) === month,
+                      ).length,
+                      '--slot-x': `${FLOOR_PLACES[floorLayout.current.get(month)?.slot ?? 0][0]}%`,
+                      '--slot-y': `${FLOOR_PLACES[floorLayout.current.get(month)?.slot ?? 0][1]}%`,
+                    } as CSSProperties
+                  }
+                >
+                  {view.floor
+                    .filter(
+                      (c) => (c.isBonus ? (view.bonusAttachments?.[c.id] ?? 0) : c.month) === month,
+                    )
+                    .map((c, i) => (
+                      <button
+                        key={c.id}
+                        style={
+                          {
+                            '--pile-index': c.isBonus
+                              ? 2
+                              : (floorLayout.current.get(month)?.cards.get(c.id) ?? i),
+                            '--pile-top': c.isBonus ? '12px' : '0px',
+                            '--rest-angle': `${FLOOR_PLACES[floorLayout.current.get(month)?.slot ?? 0][2] + ((floorLayout.current.get(month)?.cards.get(c.id) ?? i) % 2 ? 2 : 0)}deg`,
+                            visibility: landing === c.id ? 'hidden' : undefined,
+                          } as CSSProperties
+                        }
+                        data-floor-card-id={c.id}
+                        className={`floor-card ${view.options.includes(c.id) || highlight.includes(c.id) || selected?.month === c.month ? 'highlighted' : ''}`}
+                        onClick={() => {
+                          if (
+                            canPlay &&
+                            view.phase === 'SELECT_FLOOR' &&
+                            view.options.includes(c.id)
+                          )
+                            dispatch({ type: 'SELECT_FLOOR', player: me, cardId: c.id });
+                          else
+                            zoomCards(
+                              view.floor.filter(
+                                (card) =>
+                                  (card.isBonus
+                                    ? (view.bonusAttachments?.[card.id] ?? 0)
+                                    : card.month) === month,
+                              ),
+                              '바닥패 크게 보기',
+                            );
+                        }}
+                        aria-label={`${c.name}${canPlay && view.phase === 'SELECT_FLOOR' && view.options.includes(c.id) ? ' 먹기' : ' 바닥패 확대'}`}
+                      >
+                        <Card card={c} />
+                        {struck[c.id] && (
+                          <span
+                            className="landed-card"
+                            data-floor-card-id={struck[c.id].card.id}
+                            style={{
+                              transform: `translate(${struck[c.id].dx}px, ${struck[c.id].dy}px) rotate(${struck[c.id].angle}deg)`,
+                            }}
+                          >
+                            <Card card={struck[c.id].card} />
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                </div>
+              ))}
             </div>
             {impact && (
               <div
@@ -1186,8 +1241,7 @@ export function MatgoApp() {
               <p className="muted">손패를 모두 냈어요.</p>
             )}
           </div>
-          <footer className="game-footer">
-            <button onClick={() => zoomCards(view.hand, '내 손패 크게 보기')}>손패 확대 ↗</button>
+          <div className="table-tools">
             {view.players[me].captured.some((c) => c.specialType === 'KUKJIN') &&
             !view.players[me].kukjinAsPi ? (
               <button
@@ -1196,11 +1250,9 @@ export function MatgoApp() {
               >
                 국진 → 쌍피
               </button>
-            ) : (
-              <span>길게 눌러 패 확대</span>
-            )}
+            ) : null}
             {debug && <button onClick={() => setDebugPanel(true)}>개발</button>}
-          </footer>
+          </div>
         </section>
       )}
       {error && (
@@ -1299,6 +1351,10 @@ export function MatgoApp() {
           <div className="dealer-portrait">{view.dealer === 0 ? '🐰' : '🐇'}</div>
           <p>
             <strong>{view.dealer === 0 ? '내가 선이에요' : '토끼가 선이에요'}</strong>
+          </p>
+          <p className="opening-bonus-note">
+            {view.players[view.dealer].captured.filter((c) => c.isBonus).length > 0 &&
+              `시작 보너스 ${view.players[view.dealer].captured.filter((c) => c.isBonus).length}장은 선이 가져갔어요. 바닥은 8장으로 보충했어요.`}
           </p>
           <p>
             {view.dealer === 0 ? '내 패부터 천천히 골라주세요.' : '준비되면 토끼가 먼저 패를 내요.'}
@@ -1450,11 +1506,24 @@ export function MatgoApp() {
           <InviteContent code={room.code} url={inviteUrl} qr={qr} onError={setError} />
         </Modal>
       )}
+      {mode === 'multi' && room?.closed && !exit && (
+        <Modal
+          title={
+            room.expiresAt <= Date.now() ? '방 유지 시간이 끝났어요' : '친구가 방을 종료했어요'
+          }
+          onClose={leave}
+        >
+          <p>두 사람의 게임은 종료됐어요. 끝나지 않은 판은 승패에 반영하지 않아요.</p>
+          <button className="primary" onClick={leave}>
+            홈으로 돌아가기
+          </button>
+        </Modal>
+      )}
       {exit && (
         <Modal title="대기실로 돌아갈까요?" onClose={() => setExit(false)}>
           <p>
             {mode === 'multi'
-              ? '대기실로 돌아가면 이 방이 종료됩니다. 친구와 다시 치려면 새 방을 만들어주세요.'
+              ? '나가면 친구의 게임도 종료돼요. 잠깐 연결이 끊긴 경우에는 이 화면에서 기다리면 이어서 칠 수 있어요.'
               : '이번 판의 진행 상황은 저장되지 않아요.'}
           </p>
           <button className="primary" onClick={() => setExit(false)}>
@@ -1487,7 +1556,14 @@ export function MatgoApp() {
           <fieldset>
             <legend>희귀 규칙 fixture · 내 1월 패를 내세요</legend>
             <div className="fixture-buttons">
-              {['뻑과 보너스', '바닥 두 장 · 따닥', '3장 폭탄', '흔들기', '자뻑'].map((name) => (
+              {[
+                '뻑과 보너스',
+                '바닥 두 장 · 따닥',
+                '3장 폭탄',
+                '흔들기',
+                '자뻑',
+                '열두 달 바닥',
+              ].map((name) => (
                 <button
                   className="secondary"
                   key={name}
@@ -1554,6 +1630,8 @@ function PlayerInfo({
   active,
   dealer,
   wins,
+  handCount,
+  passes,
 }: {
   name: string;
   score: number;
@@ -1561,12 +1639,19 @@ function PlayerInfo({
   active: boolean;
   dealer: boolean;
   wins: number;
+  handCount?: number;
+  passes?: number;
 }) {
   return (
     <div className={`player-info ${active ? 'active' : ''}`}>
       <span className="player-name">
         <span className="player-dot" />
         {name}
+        {handCount !== undefined && (
+          <small className="hand-count" data-testid="opponent-hand">
+            {handCount}장{passes ? ` · 뒤집기 ${passes}회` : ''}
+          </small>
+        )}
         {dealer && <small className="dealer-badge">선</small>}
         <small className="win-count">{wins}승</small>
       </span>

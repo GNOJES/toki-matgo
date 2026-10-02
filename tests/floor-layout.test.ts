@@ -10,3 +10,10 @@ it('keeps existing month and individual card positions after captures and reuses
   expect(after.get(3)?.slot).toBe(before.get(3)?.slot);
   expect(after.get(4)?.slot).toBe(before.get(2)?.slot);
 });
+
+it('allocates every month once and leaves attached bonuses inside their month group', () => {
+  const layout = syncFloorLayout(new Map(), CARDS);
+  expect(layout.size).toBe(12);
+  expect(new Set([...layout.values()].map((p) => p.slot)).size).toBe(12);
+  expect(layout.has(0)).toBe(false);
+});

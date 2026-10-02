@@ -116,6 +116,7 @@ export interface GameView {
   hand: Card[];
   floor: Card[];
   deckCount: number;
+  bonusAttachments: Record<string, number>;
   currentPlayer: PlayerId;
   dealer: PlayerId;
   dealerDraw: [number, number];

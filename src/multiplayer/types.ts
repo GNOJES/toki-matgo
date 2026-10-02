@@ -18,6 +18,7 @@ export interface RoomMessage {
   events: GameEvent[];
   revision: number;
   closed: boolean;
+  expiresAt: number;
 }
 export interface Envelope {
   round: number;

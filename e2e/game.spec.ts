@@ -1,3 +1,4 @@
+import { openHandZoom } from './zoom-helper';
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 async function speed(context: BrowserContext) {
   await context.addInitScript(() => {
@@ -74,7 +75,8 @@ for (const [width, height] of [
       expect(r.right).toBeLessThanOrEqual(width);
     }
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(height);
-    expect(await page.getByTestId('opponent-hand').locator('img').count()).toBeGreaterThan(0);
+    await expect(page.getByTestId('opponent-hand')).toHaveText('10장');
+    await expect(page.getByTestId('opponent-hand').locator('img')).toHaveCount(0);
     expect(await page.locator('.hand-card').count()).toBe(10);
     await expect
       .poll(() =>
@@ -89,8 +91,8 @@ for (const [width, height] of [
           ),
       )
       .toBe(true);
-    await page.getByRole('button', { name: '손패 확대 ↗' }).click();
-    await expect(page.getByRole('dialog', { name: '내 손패 크게 보기' })).toBeVisible();
+    await openHandZoom(page);
+    await expect(page.locator('dialog.zoom-modal[open]')).toBeVisible();
     await page.getByRole('button', { name: '닫기' }).click();
     await page.getByRole('button', { name: '설정', exact: true }).click();
     await expect(page.getByRole('dialog', { name: '편안하게, 내 속도로' })).toBeVisible();
@@ -136,6 +138,8 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
   const pa = await a.newPage(),
     pb = await b.newPage();
   const messages: [unknown[], unknown[]] = [[], []];
+  const errors: string[] = [];
+  for (const p of [pa, pb]) p.on('pageerror', (error) => errors.push(error.message));
   for (const [i, p] of [pa, pb].entries())
     p.on('websocket', (ws) =>
       ws.on('framereceived', ({ payload }) => {
@@ -153,13 +157,14 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
     );
   await pa.goto('/');
   await pa.getByRole('button', { name: /친구와 치기/ }).click();
-  await pa.getByLabel('어떻게 불러드릴까요?').fill('가족 A');
+  await pa.getByLabel('내 이름 · 두 경우 모두 이 이름으로 참여해요').fill('가족 A');
   await pa.getByRole('button', { name: /방 만들기/ }).click();
   await expect(pa.getByTestId('room-code')).toBeVisible();
   const code = await pa.getByTestId('room-code').innerText();
+  expect(code).toMatch(/^[0-9]{4}$/);
   await pb.goto(`/?room=${code}`);
-  await pb.getByLabel('어떻게 불러드릴까요?').fill('친구 B');
-  await pb.getByRole('button', { name: /방 코드로 참여/ }).click();
+  await pb.getByLabel('내 이름 · 두 경우 모두 이 이름으로 참여해요').fill('친구 B');
+  await pb.getByRole('button', { name: /내 이름으로 참여/ }).click();
   await game(pa);
   await game(pb);
   const match = async () => {
@@ -186,14 +191,8 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
   const initial = messages.map((list) => (list as any[]).find((x) => x.game));
   expect(initial[0].game).toEqual(initial[1].game);
   expect(initial[0].game.deck.length).toBeGreaterThan(0);
-  await expect(pa.getByTestId('opponent-hand').locator('img').first()).toHaveAttribute(
-    'src',
-    /^\/cards\/back\.svg\?v=[a-f0-9]+$/,
-  );
-  await expect(pb.getByTestId('opponent-hand').locator('img').first()).toHaveAttribute(
-    'src',
-    /^\/cards\/back\.svg\?v=[a-f0-9]+$/,
-  );
+  await expect(pa.getByTestId('opponent-hand')).toHaveText('10장');
+  await expect(pb.getByTestId('opponent-hand')).toHaveText('10장');
   let steps = 0;
   for (; steps < 4; steps++) {
     if ((await pa.getByTestId('game-table').getAttribute('data-phase')) === 'FINISHED') break;
@@ -203,9 +202,11 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
   }
   const version = await pb.getByTestId('game-table').getAttribute('data-version');
   await b.setOffline(true);
-  await expect(pa.getByRole('status')).toContainText('친구의 연결을 기다리고 있어요.', {
+  await expect(pa.locator('.turn-message')).toContainText('친구의 연결을 기다리고 있어요.', {
     timeout: 25000,
   });
+  await expect(pa.locator('.connection-banner')).toContainText('친구 B의 재접속을 기다려요');
+  await expect(pa.getByTestId('game-table')).toHaveAttribute('data-can-act', 'false');
   await b.setOffline(false);
   await pb.reload();
   await game(pb);
@@ -238,7 +239,7 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
   await expect(pb.getByTestId('game-table')).toHaveAttribute('data-round', '2');
   await match();
   await a.setOffline(true);
-  await expect(pb.getByRole('status')).toContainText('방장의 연결을 기다리고 있어요.', {
+  await expect(pb.locator('.turn-message')).toContainText('방장의 연결을 기다리고 있어요.', {
     timeout: 30000,
   });
   await a.setOffline(false);
@@ -251,9 +252,10 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
     .getByRole('button', { name: '대기실로', exact: true })
     .click();
   await expect(pb.getByRole('link', { name: '토끼맞고 홈' })).toBeVisible();
-  await expect(
-    pa.getByText('방이 종료되었어요. 대기실로 돌아가 새 방을 만들어주세요.', { exact: true }),
-  ).toBeVisible();
+  await expect(pa.getByRole('dialog', { name: '친구가 방을 종료했어요' })).toBeVisible();
+  await pa.getByRole('button', { name: '홈으로 돌아가기', exact: true }).click();
+  await expect(pa.getByRole('link', { name: '토끼맞고 홈' })).toBeVisible();
+  expect(errors).toEqual([]);
   await a.close();
   await b.close();
 });

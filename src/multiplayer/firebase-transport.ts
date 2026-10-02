@@ -24,8 +24,8 @@ import {
 } from './host';
 import type { Envelope, MultiplayerTransport, Request, RoomData, RoomMessage } from './types';
 const rng = () => crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
-const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const codePattern = /^[A-Z2-9]{6}$/;
+const codePattern = /^(?:[0-9]{4}|[A-Z2-9]{6})$/;
+const CREATE_ATTEMPTS = 32;
 export interface Callbacks {
   state: (message: RoomMessage) => void;
   connection: (connected: boolean) => void;
@@ -47,6 +47,7 @@ export class FirebaseTransport implements MultiplayerTransport {
   private disposed = false;
   private unsubscribers: Unsubscribe[] = [];
   private room: RoomData | null = null;
+  private roomEnded = false;
   private lastRevision = -1;
   private lastRound = 0;
   private lastGameVersion = -1;
@@ -56,6 +57,7 @@ export class FirebaseTransport implements MultiplayerTransport {
   private presenceKey = crypto.randomUUID();
   private presenceRegistered = false;
   private presenceGeneration = 0;
+  private expiryTimer?: ReturnType<typeof setInterval>;
   private waiters = new Map<
     number,
     { resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }
@@ -82,7 +84,7 @@ export class FirebaseTransport implements MultiplayerTransport {
         owned = JSON.parse(localStorage.getItem('toki.firebase.owned.v1') ?? '[]');
       } catch {}
       const removed = new Set<string>();
-      for (const oldCode of owned.slice(0, 8)) {
+      for (const oldCode of owned) {
         if (!codePattern.test(oldCode)) continue;
         const meta = (await get(ref(db, `rooms/${oldCode}/meta`))).val() as RoomData['meta'] | null;
         if (!meta) removed.add(oldCode);
@@ -91,12 +93,16 @@ export class FirebaseTransport implements MultiplayerTransport {
           removed.add(oldCode);
         }
       }
-      for (let attempt = 0; attempt < 8; attempt++) {
-        const proposed = Array.from(
-          { length: 6 },
-          () => alphabet[Math.floor(rng() * alphabet.length)],
-        ).join('');
+      for (let attempt = 0; attempt < CREATE_ATTEMPTS; attempt++) {
+        const proposed = String(Math.floor(rng() * 10000)).padStart(4, '0');
         try {
+          const meta = (await get(ref(db, `rooms/${proposed}/meta`))).val() as
+            RoomData['meta'] | null;
+          if (meta) {
+            if (meta.expiresAt >= now) continue;
+            // Rules check expiry again at deletion: an active replacement is protected.
+            await remove(ref(db, `rooms/${proposed}`));
+          }
           const result = await runTransaction(
             ref(db, `rooms/${proposed}`),
             (existing) =>
@@ -110,7 +116,7 @@ export class FirebaseTransport implements MultiplayerTransport {
                       updatedAt: serverTimestamp(),
                       expiresAt: now + ROOM_TTL,
                     },
-                    players: { [uid]: { name: name.trim().slice(0, 12) || '친구' } },
+                    players: { [uid]: { name: name.trim().slice(0, 12) || '방장' } },
                     state: encodeState(emptyHostState()),
                   },
             { applyLocally: false },
@@ -120,7 +126,8 @@ export class FirebaseTransport implements MultiplayerTransport {
             break;
           }
         } catch (error) {
-          if (attempt === 7 || !/permission.denied/i.test(String(error))) throw error;
+          if (attempt === CREATE_ATTEMPTS - 1 || !/permission.denied/i.test(String(error)))
+            throw error;
         }
       }
       if (!code) throw Error('방을 만들지 못했어요. 다시 시도해주세요.');
@@ -132,7 +139,7 @@ export class FirebaseTransport implements MultiplayerTransport {
       } catch {}
     } else {
       code = code.toUpperCase();
-      if (!codePattern.test(code)) throw Error('방 코드 6자리를 확인해주세요.');
+      if (!codePattern.test(code)) throw Error('숫자 4자리 방 코드를 확인해주세요.');
       const meta = (await get(ref(db, `rooms/${code}/meta`))).val() as RoomData['meta'] | null;
       if (!meta) throw Error('방을 찾을 수 없어요. 방 코드를 확인해주세요.');
       if (meta.expiresAt < now || meta.status === 'closed')
@@ -147,7 +154,10 @@ export class FirebaseTransport implements MultiplayerTransport {
         if (!result.committed && result.snapshot.val() !== uid)
           throw Error('방이 가득 찼어요. 두 사람이 이미 참여했어요.');
       }
-      await set(ref(db, `rooms/${code}/players/${uid}/name`), name.trim().slice(0, 12) || '친구');
+      await set(
+        ref(db, `rooms/${code}/players/${uid}/name`),
+        name.trim().slice(0, 12) || (meta.hostUid === uid ? '방장' : '참가자'),
+      );
     }
     const transport = new FirebaseTransport(db, uid, code, callbacks);
     transport.listen();
@@ -157,6 +167,13 @@ export class FirebaseTransport implements MultiplayerTransport {
     return ref(this.db, `rooms/${this.code}/${suffix}`);
   }
   private listen() {
+    this.expiryTimer = setInterval(() => {
+      if (!this.disposed && this.room && this.room.meta.expiresAt <= Date.now()) {
+        clearInterval(this.expiryTimer);
+        this.callbacks.state(roomMessage(this.room, this.code, this.uid, false));
+        this.callbacks.error('방 유지 시간 24시간이 끝났어요. 새 방에서 다시 만나요.');
+      }
+    }, 30000);
     this.unsubscribers.push(
       onValue(
         this.path(''),
@@ -164,6 +181,7 @@ export class FirebaseTransport implements MultiplayerTransport {
           if (this.disposed) return;
           const room = snap.val() as RoomData | null;
           if (!room) {
+            this.roomEnded = true;
             if (this.room) {
               this.room.meta.status = 'closed';
               this.callbacks.state(roomMessage(this.room, this.code, this.uid, false));
@@ -173,6 +191,7 @@ export class FirebaseTransport implements MultiplayerTransport {
             return;
           }
           this.room = room;
+          this.roomEnded = room.meta.status === 'closed';
           const state = decodeState(room);
           const changed = state.revision !== this.lastRevision;
           const animate =
@@ -241,7 +260,14 @@ export class FirebaseTransport implements MultiplayerTransport {
       do {
         this.again = false;
         const room = this.room;
-        if (!room || this.disposed || !this.connected || room.meta.status === 'closed') break;
+        if (
+          !room ||
+          this.disposed ||
+          !this.connected ||
+          room.meta.status === 'closed' ||
+          room.meta.expiresAt <= Date.now()
+        )
+          break;
         const state = decodeState(room);
         if (!state.game && room.meta.guestUid && connected(room, room.meta.guestUid)) {
           await runTransaction(
@@ -292,7 +318,13 @@ export class FirebaseTransport implements MultiplayerTransport {
     }
   }
   async ready(round: number, version: number) {
-    if (this.disposed || !this.connected || this.room?.meta.status === 'closed') return;
+    if (
+      this.disposed ||
+      !this.connected ||
+      this.room?.meta.status === 'closed' ||
+      (this.room && this.room.meta.expiresAt <= Date.now())
+    )
+      return;
     const state = this.room ? decodeState(this.room) : null;
     if (state?.round === round && state.game?.stateVersion === version)
       this.awaitingAnimation = false;
@@ -305,6 +337,8 @@ export class FirebaseTransport implements MultiplayerTransport {
     if (this.waiters.size) throw Error('이전 패 이동을 기다려주세요.');
     const room = this.room;
     if (!room) throw Error('방에 다시 연결해주세요.');
+    if (room.meta.expiresAt <= Date.now())
+      throw Error('방 유지 시간이 끝났어요. 새 방을 만들어주세요.');
     const player = room.meta.hostUid === this.uid ? 0 : 1;
     const state = decodeState(room);
     const request: Request = { ...envelope, uid: this.uid, createdAt: Date.now() };
@@ -338,13 +372,18 @@ export class FirebaseTransport implements MultiplayerTransport {
     return this.action({ round, stateVersion, sequence, action: { type: 'NEXT_ROUND' } });
   }
   async leave() {
+    const shouldClose = !this.roomEnded;
+    // Stop callbacks and waiters immediately, even when the write waits for reconnection.
+    this.dispose();
+    // Acknowledging the other player's exit must not recreate deleted metadata locally.
+    if (!shouldClose) return;
     await update(this.path('meta'), { status: 'closed', updatedAt: serverTimestamp() });
     await remove(ref(this.db, `rooms/${this.code}`));
-    this.dispose();
   }
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    if (this.expiryTimer) clearInterval(this.expiryTimer);
     this.presenceGeneration++;
     this.unsubscribers.forEach((unsubscribe) => unsubscribe());
     this.unsubscribers = [];

@@ -7,12 +7,32 @@ export const FIXTURE_NAMES = [
   '3장 폭탄',
   '흔들기',
   '자뻑',
+  '열두 달 바닥',
 ] as const;
 export type FixtureName = (typeof FIXTURE_NAMES)[number];
 /** Development fixtures still contain precisely 50 identities and follow initial dealing rules. */
 export function createFixture(name: FixtureName, seed = 12345): GameState {
+  if (name === '열두 달 바닥') {
+    const s = createGame({ seed, dealer: 0 });
+    const floor = CARDS.filter((c) => !c.isBonus && c.id.endsWith('-0'));
+    const remaining = shuffle(
+      CARDS.filter((c) => !floor.includes(c)),
+      seededRandom(seed),
+    );
+    s.floor = floor;
+    s.players[0].hand = remaining.splice(0, 10);
+    s.players[1].hand = remaining.splice(0, 10);
+    s.players.forEach((p) => {
+      p.captured = [];
+    });
+    s.deck = remaining;
+    s.phase = 'PLAY';
+    s.result = null;
+    assertInvariant(s);
+    return s;
+  }
   const setups: Record<
-    FixtureName,
+    Exclude<FixtureName, '열두 달 바닥'>,
     { hand: string[]; floor: string[]; draw: string[]; opponent: string[] }
   > = {
     '뻑과 보너스': {

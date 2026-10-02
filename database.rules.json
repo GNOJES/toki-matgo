@@ -5,8 +5,8 @@
     "rooms": {
       "$code": {
         ".read": "auth != null && (!data.exists() || auth.uid === data.child('meta/hostUid').val() || auth.uid === data.child('meta/guestUid').val())",
-        ".write": "auth != null && ((!data.exists() && newData.child('meta/hostUid').val() === auth.uid && newData.child('meta/status').val() === 'waiting' && !newData.child('meta/guestUid').exists() && newData.child('state/version').val() === 0) || (!newData.exists() && (auth.uid === data.child('meta/hostUid').val() || auth.uid === data.child('meta/guestUid').val()) && (data.child('meta/status').val() === 'closed' || data.child('meta/expiresAt').val() < now)))",
-        ".validate": "newData.hasChildren(['meta', 'players', 'state']) && $code.matches(/^[A-Z2-9]{6}$/)",
+        ".write": "auth != null && ((!data.exists() && $code.matches(/^[0-9]{4}$/) && newData.child('meta/hostUid').val() === auth.uid && newData.child('meta/status').val() === 'waiting' && !newData.child('meta/guestUid').exists() && newData.child('state/version').val() === 0) || (!newData.exists() && (data.child('meta/expiresAt').val() < now || ((auth.uid === data.child('meta/hostUid').val() || auth.uid === data.child('meta/guestUid').val()) && data.child('meta/status').val() === 'closed'))))",
+        ".validate": "newData.hasChildren(['meta', 'players', 'state']) && $code.matches(/^([0-9]{4}|[A-Z2-9]{6})$/)",
         "meta": {
           ".read": "auth != null",
           ".write": "auth != null && (auth.uid === root.child('rooms').child($code).child('meta/hostUid').val() || auth.uid === root.child('rooms').child($code).child('meta/guestUid').val())",

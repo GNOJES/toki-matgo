@@ -92,6 +92,28 @@ describe('deck & setup', () => {
     expect(s).toBeDefined();
     expect(s!.floor).toHaveLength(8);
   });
+  it.each([0, 1] as const)(
+    'dealer %i captures consecutive opening bonuses and refills eight floor cards',
+    (dealer) => {
+      const regular = CARDS.filter((c) => !c.isBonus).sort(
+        (a, b) => Number(a.id.split('-')[1]) - Number(b.id.split('-')[1]),
+      );
+      const deck = [
+        ...regular.slice(0, 20),
+        ...cards('bonus-0'),
+        ...regular.slice(20, 27),
+        ...cards('bonus-1'),
+        ...regular.slice(27),
+      ];
+      const s = createGame({ deck, dealer });
+      expect(s.players[dealer].captured.map((c) => c.id)).toEqual(['bonus-0', 'bonus-1']);
+      expect(s.players[1 - dealer].captured).toHaveLength(0);
+      expect(s.floor).toHaveLength(8);
+      expect(s.floor.some((c) => c.isBonus)).toBe(false);
+      expect(s.deck).toHaveLength(20);
+      assertInvariant(s);
+    },
+  );
   it('initial chongtong ends at 10 without continuing', () => {
     const head = cards('m1-0', 'm1-1', 'm1-2', 'm1-3');
     const deck = [
@@ -152,6 +174,7 @@ describe('matching and special events', () => {
     expect(r.nextState.floor).toHaveLength(4);
     expect(r.nextState.ppukOwners[1]).toBe(0);
     expect(r.nextState.bonusAttachments['bonus-0']).toBe(1);
+    expect(projectState(r.nextState, 0).bonusAttachments['bonus-0']).toBe(1);
     expect(r.events.some((e) => e.type === 'PPUK_OCCURRED')).toBe(true);
   });
   it.each([0, 1] as const)('ppuk owner %i determines one/two pi transfer', (owner) => {

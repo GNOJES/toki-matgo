@@ -75,7 +75,8 @@ export function processRequest(
   next.processed[player] = request.sequence;
   next.receipts[player] = { seq: request.sequence };
   try {
-    if (room.meta.status === 'closed') throw Error('종료된 방이에요. 새 방을 만들어주세요.');
+    if (room.meta.status === 'closed' || room.meta.expiresAt <= Date.now())
+      throw Error('종료된 방이에요. 새 방을 만들어주세요.');
     if (!next.game || request.round !== next.round) throw Error('현재 판에서 다시 선택해주세요.');
     if (request.stateVersion !== next.game.stateVersion)
       throw Error('화면이 바뀌었어요. 다시 선택해주세요.');
@@ -118,20 +119,22 @@ export function roomMessage(
   return {
     code,
     me,
-    nickname: room.players?.[uid]?.name ?? '친구',
+    nickname: room.players?.[uid]?.name ?? (me === 0 ? '방장' : '참가자'),
     names: [
-      room.players?.[room.meta.hostUid]?.name ?? '친구',
-      room.players?.[room.meta.guestUid ?? '']?.name ?? '친구',
+      room.players?.[room.meta.hostUid]?.name ?? '방장',
+      room.players?.[room.meta.guestUid ?? '']?.name ?? '참가자',
     ],
     connected: [connected(room, room.meta.hostUid), connected(room, room.meta.guestUid)],
     round: state.round,
     stats: state.stats,
     nextReady: state.nextReady,
     actionSequence: state.processed[me],
-    canAct: room.meta.status !== 'closed' && readyToAct(room, state),
+    canAct:
+      room.meta.status !== 'closed' && room.meta.expiresAt > Date.now() && readyToAct(room, state),
     game: state.game ? projectState(state.game, me) : null,
     events: events ? state.events : [],
     revision: state.revision,
-    closed: room.meta.status === 'closed',
+    closed: room.meta.status === 'closed' || room.meta.expiresAt <= Date.now(),
+    expiresAt: room.meta.expiresAt,
   };
 }

@@ -1,3 +1,4 @@
+import { openHandZoom } from './zoom-helper';
 import { test, expect } from '@playwright/test';
 
 test('mobile back closes nested menus, confirms game exit and keeps the home page', async ({
@@ -20,7 +21,7 @@ test('mobile back closes nested menus, confirms game exit and keeps the home pag
   await page.goBack();
   await expect(settings).toHaveCount(0);
   await page.getByRole('button', { name: /친구와 치기/ }).click();
-  await expect(page.getByRole('heading', { name: '친구를 초대해요.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '내 이름으로 함께해요.' })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole('link', { name: '토끼맞고 홈' })).toBeVisible();
   await page.getByRole('button', { name: /혼자 치기/ }).click();
@@ -29,8 +30,8 @@ test('mobile back closes nested menus, confirms game exit and keeps the home pag
   await expect(game).toHaveAttribute('data-phase', 'PLAY');
   expect(await page.locator('.hand-card').allTextContents()).toEqual(Array(10).fill(''));
   const version = await game.getAttribute('data-version');
-  await page.getByRole('button', { name: '손패 확대 ↗' }).click();
-  await expect(page.getByRole('dialog', { name: '내 손패 크게 보기' })).toBeVisible();
+  await openHandZoom(page);
+  await expect(page.locator('dialog.zoom-modal[open]')).toBeVisible();
   await page.goBack();
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await expect(game).toHaveAttribute('data-version', version!);
@@ -67,19 +68,21 @@ test('mobile floor pairs and triples overlap a third of each face, enlarge and p
     await page.getByRole('button', { name: fixture, exact: true }).click();
     const group = page.locator('[data-floor-month="1"]');
     await expect(group.locator('.floor-card')).toHaveCount(fixture === '자뻑' ? 3 : 2);
-    const boxes = await group
-      .locator('.floor-card')
-      .evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().toJSON()));
-    expect(boxes.length).toBe(fixture === '자뻑' ? 3 : 2);
-    for (let i = 1; i < boxes.length; i++) {
-      const visible = (boxes[i].left - boxes[i - 1].left) / boxes[i - 1].width;
-      expect(visible).toBeGreaterThan(0.63);
-      expect(visible).toBeLessThan(0.7);
+    const offsets = await group.locator('.floor-card').evaluateAll((cards) =>
+      cards.map((card) => {
+        const css = getComputedStyle(card);
+        return { left: parseFloat(css.left), width: parseFloat(css.width) };
+      }),
+    );
+    expect(offsets.length).toBe(fixture === '자뻑' ? 3 : 2);
+    for (let i = 1; i < offsets.length; i++) {
+      // Measure layout overlap before the deliberate resting rotation.
+      expect((offsets[i].left - offsets[i - 1].left) / offsets[i - 1].width).toBeCloseTo(2 / 3, 2);
     }
     await group.locator('.floor-card').first().click();
     const zoom = page.getByRole('dialog', { name: '바닥패 크게 보기' });
     await expect(zoom).toBeVisible();
-    await expect(zoom.locator('img')).toHaveCount(boxes.length);
+    await expect(zoom.locator('img')).toHaveCount(offsets.length);
     await page.goBack();
     await expect(zoom).toHaveCount(0);
   }

@@ -1,3 +1,4 @@
+import { openHandZoom } from './zoom-helper';
 import { test, expect } from '@playwright/test';
 
 test('mobile computer dealer waits for start confirmation', async ({ page, context }) => {
@@ -91,12 +92,12 @@ test('browser traversal from an outside entry stays in game and cross-document e
   await page.goto('/?debug=1');
   await page.getByRole('button', { name: /혼자 치기/ }).click();
   const cdp = await context.newCDPSession(page);
-  await page.getByRole('button', { name: '손패 확대 ↗' }).click();
+  await openHandZoom(page);
   let history = await cdp.send('Page.getNavigationHistory');
   await cdp.send('Page.navigateToHistoryEntry', {
     entryId: history.entries[history.currentIndex - 1].id,
   });
-  await expect(page.getByRole('dialog', { name: '내 손패 크게 보기' })).toHaveCount(0);
+  await expect(page.locator('dialog.zoom-modal[open]')).toHaveCount(0);
   await expect(page.getByTestId('game-table')).toBeVisible();
   history = await cdp.send('Page.getNavigationHistory');
   await cdp.send('Page.navigateToHistoryEntry', {
@@ -112,4 +113,64 @@ test('browser traversal from an outside entry stays in game and cross-document e
   await page.goto('about:blank', { timeout: 5000 }).catch(() => {});
   expect(confirmation).toBe(true);
   await expect(page.getByTestId('game-table')).toBeVisible();
+});
+
+test('mobile center deck matches floor card size and twelve months never cover each other', async ({
+  page,
+}) => {
+  for (const [width, height] of [
+    [360, 740],
+    [390, 844],
+    [412, 915],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/?debug=1');
+    await page.getByRole('button', { name: /혼자 치기/ }).click();
+    await page.getByRole('button', { name: '개발', exact: true }).click();
+    await page.getByRole('button', { name: '열두 달 바닥', exact: true }).click();
+    await expect(page.locator('.floor-card')).toHaveCount(12);
+    const measurements = await page.locator('.floor-area').evaluate((board) => {
+      const bounds = board.getBoundingClientRect();
+      const deck = board.querySelector('.deck .hwatu')!;
+      const d = deck.getBoundingClientRect().toJSON();
+      const cards = [...board.querySelectorAll('.floor-card')].map((el) => ({
+        rect: el.getBoundingClientRect().toJSON(),
+        width: parseFloat(getComputedStyle(el).width),
+        angle: getComputedStyle(el).transform,
+      }));
+      return { bounds: bounds.toJSON(), deck: d, cards };
+    });
+    expect(measurements.cards).toHaveLength(12);
+    const { deck, bounds, cards } = measurements;
+    expect(deck.x + deck.width / 2).toBeCloseTo(bounds.x + bounds.width / 2, 0);
+    expect(deck.y + deck.height / 2).toBeCloseTo(bounds.y + bounds.height / 2, 0);
+    for (const card of cards) {
+      expect(card.width).toBeCloseTo(deck.width, 0);
+      expect(card.angle).not.toBe('none');
+      expect(card.rect.left).toBeGreaterThanOrEqual(bounds.left);
+      expect(card.rect.right).toBeLessThanOrEqual(bounds.right);
+    }
+    const rects = [...cards.map((c) => c.rect), deck];
+    for (let i = 0; i < rects.length; i++)
+      for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i],
+          b = rects[j];
+        const overlap =
+          Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) *
+          Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        expect(overlap).toBe(0);
+      }
+  }
+});
+
+test('mobile ppuk bonus rests with its month instead of an unrelated bonus group', async ({
+  page,
+}) => {
+  await page.goto('/?debug=1');
+  await page.getByRole('button', { name: /혼자 치기/ }).click();
+  await page.getByRole('button', { name: '개발', exact: true }).click();
+  await page.getByRole('button', { name: '뻑과 보너스', exact: true }).click();
+  await page.locator('.hand-card[data-card-id="m1-2"]').click();
+  await expect(page.locator('[data-floor-month="1"] [data-floor-card-id="bonus-0"]')).toBeVisible();
+  await expect(page.locator('[data-floor-month="0"]')).toHaveCount(0);
 });

@@ -26,7 +26,7 @@ export function cardFlight(
     [mine ? 1 : 0]?.querySelectorAll('.captured-group')[group];
   const hand = mine
     ? document.querySelector(`[data-card-id="${card?.id}"] .hwatu`)
-    : document.querySelector('.opponent-hand .hwatu:last-of-type');
+    : document.querySelector('[data-testid="opponent-hand"]');
   const deck = document.querySelector('.deck .hwatu');
   const source = kind === 'play' ? hand : kind === 'flip' ? deck : (floor(card?.id) ?? deck);
   const target = kind === 'capture' ? pile : (floor(targetId) ?? deck);
