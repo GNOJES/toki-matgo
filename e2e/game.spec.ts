@@ -17,7 +17,8 @@ async function act(page: Page) {
   if (phase === 'FINISHED') return false;
   if ((await table.getAttribute('data-can-act')) !== 'true') return false;
   const before = await table.getAttribute('data-version');
-  if (phase === 'GO_STOP')
+  if (phase === 'SELECT_KUKJIN') await page.getByRole('button', { name: /쌍피로 사용/ }).click();
+  else if (phase === 'GO_STOP')
     await page.getByRole('button', { name: '스톱 이번 판을 마쳐요' }).click();
   else if (phase === 'SELECT_FLOOR') await page.locator('.floor-choices button').first().click();
   else {
@@ -196,7 +197,7 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
   await pa.getByRole('button', { name: /친구와 치기/ }).click();
   await pa.getByLabel('내 이름 · 두 경우 모두 이 이름으로 참여해요').fill('가족 A');
   await pa.getByRole('button', { name: /방 만들기/ }).click();
-  await expect(pa.getByTestId('room-code')).toBeVisible();
+  await expect(pa.getByTestId('room-code')).toBeVisible({ timeout: 15000 });
   const code = await pa.getByTestId('room-code').innerText();
   expect(code).toMatch(/^[0-9]{4}$/);
   await pb.goto(`/?room=${code}`);

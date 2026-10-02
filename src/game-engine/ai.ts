@@ -20,6 +20,12 @@ export function chooseAction(
   rng: () => number = Math.random,
 ): GameAction {
   if (view.currentPlayer !== player) throw new Error('AI 차례 아님');
+  if (view.phase === 'SELECT_KUKJIN') {
+    const p = view.players[player];
+    const keeping = calculateScore({ ...p, hand: [] });
+    const converting = calculateScore({ ...p, hand: [], kukjinAsPi: true });
+    return { type: 'SET_KUKJIN', player, asPi: converting.finalScore >= keeping.finalScore };
+  }
   if (view.phase === 'GO_STOP') {
     const own = view.scores[player],
       other = view.scores[1 - player];

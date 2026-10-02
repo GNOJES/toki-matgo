@@ -128,7 +128,18 @@ test('mobile center deck matches floor card size and twelve months never cover e
     await page.getByRole('button', { name: /혼자 치기/ }).click();
     await page.getByRole('button', { name: '개발', exact: true }).click();
     await page.getByRole('button', { name: '열두 달 바닥', exact: true }).click();
-    await expect(page.locator('.floor-card')).toHaveCount(12);
+    await expect(page.getByRole('dialog', { name: '개발 · 룰 검증' })).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page
+          .locator('.floor-card')
+          .evaluateAll((els) => els.map((el) => el.getAttribute('data-floor-card-id')).sort()),
+      )
+      .toEqual(Array.from({ length: 12 }, (_, i) => `m${i + 1}-0`).sort());
+    await page.locator('.floor-card img').evaluateAll(async (images) => {
+      await Promise.all(images.map((img) => (img as HTMLImageElement).decode()));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
     const measurements = await page.locator('.floor-area').evaluate((board) => {
       const bounds = board.getBoundingClientRect();
       const deck = board.querySelector('.deck .hwatu')!;
@@ -138,7 +149,12 @@ test('mobile center deck matches floor card size and twelve months never cover e
         width: parseFloat(getComputedStyle(el).width),
         angle: getComputedStyle(el).transform,
       }));
-      return { bounds: bounds.toJSON(), deck: d, cards };
+      return {
+        bounds: bounds.toJSON(),
+        deck: d,
+        cards,
+        handWidth: parseFloat(getComputedStyle(document.querySelector('.hand-card .hwatu')!).width),
+      };
     });
     expect(measurements.cards).toHaveLength(12);
     const { deck, bounds, cards } = measurements;
@@ -146,6 +162,7 @@ test('mobile center deck matches floor card size and twelve months never cover e
     expect(deck.y + deck.height / 2).toBeCloseTo(bounds.y + bounds.height / 2, 0);
     for (const card of cards) {
       expect(card.width).toBeCloseTo(deck.width, 0);
+      expect(card.width).toBeCloseTo(measurements.handWidth, 0);
       expect(card.angle).not.toBe('none');
       expect(card.rect.left).toBeGreaterThanOrEqual(bounds.left);
       expect(card.rect.right).toBeLessThanOrEqual(bounds.right);
@@ -158,7 +175,7 @@ test('mobile center deck matches floor card size and twelve months never cover e
         const overlap =
           Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) *
           Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-        expect(overlap).toBe(0);
+        expect(overlap, JSON.stringify({ width, height, a, b })).toBe(0);
       }
   }
 });

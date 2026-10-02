@@ -7,6 +7,8 @@ export const FIXTURE_NAMES = [
   '3장 폭탄',
   '폭탄과 피 강탈',
   '보너스 손패',
+  '국화 선택',
+  '국화 점수 선택',
   '흔들기',
   '자뻑',
   '열두 달 바닥',
@@ -52,6 +54,18 @@ export function createFixture(name: FixtureName, seed = 12345): GameState {
       draw: ['m4-2'],
       opponent: [],
     },
+    '국화 선택': {
+      hand: ['m2-0'],
+      floor: ['m1-0', 'm4-0', 'm5-0', 'm6-0', 'm7-0', 'm8-0', 'm10-0', 'm11-0'],
+      draw: ['m3-0'],
+      opponent: [],
+    },
+    '국화 점수 선택': {
+      hand: ['m2-0'],
+      floor: ['m1-0', 'm4-0', 'm5-0', 'm6-0', 'm7-0', 'm8-0', 'm10-0', 'm11-0'],
+      draw: ['m3-0'],
+      opponent: [],
+    },
     흔들기: { hand: ['m1-0', 'm1-1', 'm1-2'], floor: [], draw: ['m4-2'], opponent: ['m1-3'] },
     자뻑: { hand: ['m1-3'], floor: ['m1-0', 'm1-1', 'm1-2'], draw: ['m4-2'], opponent: [] },
   };
@@ -61,7 +75,13 @@ export function createFixture(name: FixtureName, seed = 12345): GameState {
     floor = resolve(def.floor),
     draw = resolve(def.draw),
     opponent = resolve(def.opponent);
-  const used = new Set([...hand, ...floor, ...draw, ...opponent].map((c) => c.id));
+  const captured = name.startsWith('국화')
+    ? [
+        CARDS.find((c) => c.specialType === 'KUKJIN')!,
+        ...(name === '국화 점수 선택' ? CARDS.filter((c) => c.piValue === 1).slice(0, 15) : []),
+      ]
+    : [];
+  const used = new Set([...hand, ...floor, ...draw, ...opponent, ...captured].map((c) => c.id));
   let remaining = shuffle(
     CARDS.filter((c) => !used.has(c.id)),
     seededRandom(seed),
@@ -81,10 +101,14 @@ export function createFixture(name: FixtureName, seed = 12345): GameState {
   fill(opponent, 10, true);
   fill(floor, 8, false);
   const s = createGame({
-    deck: [...hand, ...opponent, ...floor, ...draw, ...remaining],
+    deck: [...hand, ...opponent, ...floor, ...draw, ...remaining, ...captured],
     dealer: 0,
     seed,
   });
+  if (captured.length) {
+    s.deck = s.deck.filter((c) => !captured.includes(c));
+    s.players[0].captured = captured;
+  }
   if (name === '폭탄과 피 강탈') {
     const i = s.deck.findIndex((c) => c.piValue === 1);
     if (i < 0) throw Error('피 강탈 검증용 피가 없어요.');

@@ -25,6 +25,7 @@ import {
 import { CARDS } from '../game-engine/cards';
 import { applyAction, createGame, projectState } from '../game-engine/engine';
 import { chooseAction } from '../game-engine/ai';
+import { calculateScore } from '../game-engine/score';
 import {
   DEFAULT_PREFS,
   readPreferences,
@@ -55,6 +56,14 @@ const eventLabel: Record<string, string> = {
   SCORE_CHANGED: '점수를 확인해요',
   TURN_ENDED: '다음 차례',
   FLOOR_MATCH_REQUIRED: '먹을 바닥패를 골라주세요',
+};
+const effectDetails: Record<string, string> = {
+  BOMB: '세 장을 한 번에!',
+  SWEEP: '바닥패를 모두 획득!',
+  JJOK: '뒤집은 패까지 한 쌍!',
+  TTADAK: '같은 월 네 장 획득!',
+  PPUK_OCCURRED: '세 장이 바닥에 남아요',
+  SHAKE: '승리하면 점수 두 배!',
 };
 const emptyStats: Stats = { wins: [0, 0], points: [0, 0] };
 function storeItem(key: string, value: string | null) {
@@ -90,6 +99,7 @@ export function MatgoApp() {
   const roundRef = useRef(1);
   const [stats, setStats] = useState<Stats>(emptyStats);
   const [playHistory, setPlayHistory] = useState<History>(emptyHistory);
+  const [kukjinMenu, setKukjinMenu] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const historyRef = useRef<History>(emptyHistory());
   const soloRoundId = useRef('');
@@ -99,6 +109,9 @@ export function MatgoApp() {
   const [impact, setImpact] = useState<{ key: number; x: number; y: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const [specialEffect, setSpecialEffect] = useState<{ label: string; detail: string } | null>(
+    null,
+  );
   const [status, setStatus] = useState('');
   const [highlight, setHighlight] = useState<string[]>([]);
   const [motion, setMotion] = useState<{
@@ -190,6 +203,8 @@ export function MatgoApp() {
             setLog((old) => [...old.slice(-100), e]);
             setStatus(e.label ?? eventLabel[e.type] ?? '');
             setHighlight(e.cards?.map((c) => c.id) ?? []);
+            if (effectDetails[e.type])
+              setSpecialEffect({ label: e.label ?? e.type, detail: effectDetails[e.type] });
             const mine = e.player === meRef.current;
             const ids = new Set(e.cards?.map((c) => c.id));
             const fly = async (
@@ -411,6 +426,7 @@ export function MatgoApp() {
           setLanding(null);
           setHighlight([]);
           setStatus('');
+          setSpecialEffect(null);
           setImpact(null);
           busyRef.current = false;
           setBusy(false);
@@ -604,6 +620,7 @@ export function MatgoApp() {
     setImpact(null);
     setHighlight([]);
     setStatus('');
+    setSpecialEffect(null);
     setLanding(null);
     waitingFlight.current = {};
     setRoom(null);
@@ -659,6 +676,7 @@ export function MatgoApp() {
       setImpact(null);
       setHighlight([]);
       setStatus('');
+      setSpecialEffect(null);
       setLanding(null);
       waitingFlight.current = {};
       setRoom(null);
@@ -699,6 +717,7 @@ export function MatgoApp() {
       setError('');
       setSelected(null);
       setSpecial(null);
+      setKukjinMenu(false);
       unlockAudio();
       if (modeRef.current === 'multi') {
         if (!multiplayer.current?.connected) {
@@ -741,6 +760,7 @@ export function MatgoApp() {
       screen !== 'game' ||
       busy ||
       dealerNotice ||
+      kukjinMenu ||
       !view ||
       view.currentPlayer !== 1 ||
       view.phase === 'FINISHED' ||
@@ -760,6 +780,7 @@ export function MatgoApp() {
     mode,
     screen,
     dealerNotice,
+    kukjinMenu,
     busy,
     view,
     prefs.difficulty,
@@ -783,6 +804,7 @@ export function MatgoApp() {
     setImpact(null);
     setHighlight([]);
     setStatus('');
+    setSpecialEffect(null);
     setLanding(null);
     waitingFlight.current = {};
     connectionAttempt.current++;
@@ -797,6 +819,7 @@ export function MatgoApp() {
     viewRef.current = null;
     logical.current = null;
     setExit(false);
+    setKukjinMenu(false);
     setInvite(false);
     setError('');
     history.replaceState({ ...history.state }, '', window.location.pathname);
@@ -875,13 +898,17 @@ export function MatgoApp() {
           : '친구의 연결을 기다리고 있어요.'
         : busy
           ? status
-          : view?.phase === 'SELECT_FLOOR'
+          : view?.phase === 'SELECT_KUKJIN'
             ? view.currentPlayer === me
-              ? '먹을 바닥패를 골라주세요'
-              : `${opponent}의 선택을 기다려요`
-            : view?.currentPlayer === me
-              ? '내 차례 · 손패를 톡 눌러주세요'
-              : `${opponent}가 패를 고르고 있어요`;
+              ? '국화 열끗 · 쌍피를 선택해주세요'
+              : `${opponent}의 국화 선택을 기다려요`
+            : view?.phase === 'SELECT_FLOOR'
+              ? view.currentPlayer === me
+                ? '먹을 바닥패를 골라주세요'
+                : `${opponent}의 선택을 기다려요`
+              : view?.currentPlayer === me
+                ? '내 차례 · 손패를 톡 눌러주세요'
+                : `${opponent}가 패를 고르고 있어요`;
   return (
     <main className={`app ${screen === 'game' ? 'playing' : ''}`}>
       {showHistory && (
@@ -1153,6 +1180,8 @@ export function MatgoApp() {
                   data-floor-month={month}
                   style={
                     {
+                      '--stack-direction':
+                        FLOOR_PLACES[floorLayout.current.get(month)?.slot ?? 0][0] > 50 ? -1 : 1,
                       '--pile-count': view.floor.filter(
                         (c) =>
                           (c.isBonus ? (view.bonusAttachments?.[c.id] ?? 0) : c.month) === month,
@@ -1271,11 +1300,15 @@ export function MatgoApp() {
                 ))}
               </div>
             )}
-            <div
-              className={`turn-message ${busy && status && !Object.values(eventLabel).includes(status) ? 'callout' : ''}`}
-              role="status"
-            >
-              {snapshotStatus}
+            <div className={`turn-message ${busy && specialEffect ? 'callout' : ''}`} role="status">
+              {busy && specialEffect ? (
+                <>
+                  {specialEffect.label}
+                  <small>{specialEffect.detail}</small>
+                </>
+              ) : (
+                snapshotStatus
+              )}
             </div>
           </div>
           <PlayerInfo
@@ -1350,15 +1383,59 @@ export function MatgoApp() {
             !view.players[me].kukjinAsPi ? (
               <button
                 disabled={!canPlay || view.phase !== 'PLAY'}
-                onClick={() => dispatch({ type: 'SET_KUKJIN', player: me })}
+                className="kukjin-button"
+                onClick={() => setKukjinMenu(true)}
               >
-                국진 → 쌍피
+                국화 열끗 · 쌍피 선택
               </button>
             ) : null}
             {debug && <button onClick={() => setDebugPanel(true)}>개발</button>}
           </div>
         </section>
       )}
+      {view &&
+        !busy &&
+        view.currentPlayer === me &&
+        (view.phase === 'SELECT_KUKJIN' || kukjinMenu) && (
+          <Modal
+            title="국화를 쌍피로 사용할까요?"
+            onClose={() => {
+              if (view.phase !== 'SELECT_KUKJIN') setKukjinMenu(false);
+            }}
+          >
+            <div className="kukjin-preview">
+              <Card card={CARDS.find((c) => c.specialType === 'KUKJIN')} />
+            </div>
+            <p>
+              열끗으로 두거나 피 두 장으로 옮길 수 있어요. 쌍피로 바꾸면 다시 열끗으로 되돌릴 수
+              없어요.
+            </p>
+            <div className="kukjin-choices">
+              <button
+                className="primary"
+                disabled={!canPlay}
+                onClick={() => dispatch({ type: 'SET_KUKJIN', player: me, asPi: true })}
+              >
+                쌍피로 사용
+                <small>
+                  피 2장 · 기본{' '}
+                  {calculateScore({ ...view.players[me], hand: [], kukjinAsPi: true }).baseScore}점
+                </small>
+              </button>
+              <button
+                className="secondary"
+                disabled={!canPlay}
+                onClick={() =>
+                  view.phase === 'SELECT_KUKJIN'
+                    ? dispatch({ type: 'SET_KUKJIN', player: me, asPi: false })
+                    : setKukjinMenu(false)
+                }
+              >
+                열끗으로 유지<small>열끗 1장 · 기본 {view.scores[me].baseScore}점</small>
+              </button>
+            </div>
+          </Modal>
+        )}
       {error && (
         <div className="error-toast" role="alert">
           <span>{error}</span>
@@ -1667,6 +1744,8 @@ export function MatgoApp() {
                 '3장 폭탄',
                 '폭탄과 피 강탈',
                 '보너스 손패',
+                '국화 선택',
+                '국화 점수 선택',
                 '흔들기',
                 '자뻑',
                 '열두 달 바닥',

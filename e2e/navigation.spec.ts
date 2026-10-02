@@ -71,7 +71,7 @@ test('mobile floor pairs and triples overlap a third of each face, enlarge and p
     const offsets = await group.locator('.floor-card').evaluateAll((cards) =>
       cards.map((card) => {
         const css = getComputedStyle(card);
-        return { left: parseFloat(css.left), width: parseFloat(css.width) };
+        return { left: Math.abs(parseFloat(css.left)), width: parseFloat(css.width) };
       }),
     );
     expect(offsets.length).toBe(fixture === '자뻑' ? 3 : 2);

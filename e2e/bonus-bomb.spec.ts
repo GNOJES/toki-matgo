@@ -79,6 +79,12 @@ test('mobile bomb creates two playable hand tokens and stolen pi flies from oppo
   await page.locator('.hand-card[data-card-id="m1-0"]').click();
   await page.getByRole('button', { name: '폭탄 내기', exact: true }).click();
   await expect(page.locator('.card-motion.transfer')).toBeVisible();
+  const callout = page.locator('.turn-message.callout');
+  await expect(callout).toContainText('폭탄');
+  expect(
+    await callout.evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+  ).toBeGreaterThanOrEqual(26);
+  await page.screenshot({ path: '/tmp/toki-special-effect.png' });
   const from = await endpoint(
     page,
     '.card-motion.transfer',

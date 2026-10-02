@@ -292,14 +292,7 @@ function endTurn(s: GameState, events: GameEvent[]) {
   } else if (p.emptyStreak >= 5) {
     finish(s, s.currentPlayer, 'HEODANG', 7);
   } else {
-    const score = calculateScore(p).baseScore;
-    if (score >= RULES.stopScore && score > p.goAtScore) {
-      if (p.turnsRemaining === 0) finish(s, s.currentPlayer, 'STOP');
-      else {
-        s.phase = 'GO_STOP';
-        events.push({ type: 'GO_STOP_REQUIRED', player: s.currentPlayer });
-      }
-    } else advance(s, events);
+    decideScore(s, events, true);
   }
   if (s.phase === 'FINISHED')
     events.push({
@@ -307,6 +300,25 @@ function endTurn(s: GameState, events: GameEvent[]) {
       player: s.currentPlayer,
       label: s.result?.reason === 'NAGARI' ? '나가리' : '판 종료',
     });
+}
+function decideScore(s: GameState, events: GameEvent[], offerKukjin: boolean) {
+  const p = s.players[s.currentPlayer];
+  if (offerKukjin && !p.kukjinAsPi && p.captured.some((c) => c.specialType === 'KUKJIN')) {
+    const withPi = calculateScore({ ...p, kukjinAsPi: true }).baseScore;
+    if (withPi >= RULES.stopScore && withPi > p.goAtScore) {
+      s.phase = 'SELECT_KUKJIN';
+      events.push({ type: 'KUKJIN_REQUIRED', player: s.currentPlayer });
+      return;
+    }
+  }
+  const score = calculateScore(p).baseScore;
+  if (score >= RULES.stopScore && score > p.goAtScore) {
+    if (p.turnsRemaining === 0) finish(s, s.currentPlayer, 'STOP');
+    else {
+      s.phase = 'GO_STOP';
+      events.push({ type: 'GO_STOP_REQUIRED', player: s.currentPlayer });
+    }
+  } else advance(s, events);
 }
 function advance(s: GameState, events: GameEvent[]) {
   events.push({ type: 'TURN_ENDED', player: s.currentPlayer });
@@ -339,14 +351,34 @@ export function applyAction(state: GameState, action: GameAction): ActionResult 
       advance(s, events);
     }
   } else if (action.type === 'SET_KUKJIN') {
-    if (s.phase !== 'PLAY' || p.kukjinAsPi || !p.captured.some((c) => c.specialType === 'KUKJIN'))
-      throw new Error('국진을 바꿀 수 없습니다.');
-    p.kukjinAsPi = true;
-    events.push({ type: 'KUKJIN_CHANGED', player: action.player, label: '국진 → 쌍피' });
-    const score = calculateScore(p).baseScore;
-    if (score >= 7 && score > p.goAtScore) {
-      s.phase = 'GO_STOP';
-      events.push({ type: 'GO_STOP_REQUIRED', player: action.player });
+    const choosing = s.phase === 'SELECT_KUKJIN';
+    if (
+      (!choosing && s.phase !== 'PLAY') ||
+      p.kukjinAsPi ||
+      !p.captured.some((c) => c.specialType === 'KUKJIN') ||
+      (action.asPi !== undefined && typeof action.asPi !== 'boolean') ||
+      (!choosing && action.asPi === false)
+    )
+      throw new Error('국화를 바꿀 수 없습니다.');
+    if (action.asPi !== false) {
+      p.kukjinAsPi = true;
+      events.push({ type: 'KUKJIN_CHANGED', player: action.player, label: '국화 → 쌍피' });
+      events.push({
+        type: 'SCORE_CHANGED',
+        player: action.player,
+        points: calculateScore(p).baseScore,
+      });
+    }
+    if (choosing) {
+      decideScore(s, events, false);
+      if (s.phase === 'FINISHED')
+        events.push({ type: 'GAME_FINISHED', player: action.player, label: '스톱' });
+    } else {
+      const score = calculateScore(p).baseScore;
+      if (score >= RULES.stopScore && score > p.goAtScore) {
+        s.phase = 'GO_STOP';
+        events.push({ type: 'GO_STOP_REQUIRED', player: action.player });
+      }
     }
   } else if (action.type === 'SELECT_FLOOR') {
     if (s.phase !== 'SELECT_FLOOR' || !s.turn?.options.includes(action.cardId))

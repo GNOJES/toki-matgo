@@ -16,6 +16,7 @@ import {
 import { FirebaseTransport } from '../src/multiplayer/firebase-transport';
 import { decodeState, encodeState } from '../src/multiplayer/host';
 import { createFixture } from '../src/game-engine/fixtures';
+import { applyAction } from '../src/game-engine/engine';
 import type { RoomData, RoomMessage } from '../src/multiplayer/types';
 let env: RulesTestEnvironment;
 const apps: FirebaseApp[] = [],
@@ -211,6 +212,73 @@ it('real anonymous Auth, rooms, guest choice -> host transaction, invalid/duplic
   expect(errors.filter((m) => !m.includes('종료'))).toEqual([]);
 });
 
+it('host and guest can choose chrysanthemum conversion or retention through existing rules', async () => {
+  const host = await user(),
+    guest = await user();
+  const messages: (RoomMessage | undefined)[] = [];
+  const errors: string[] = [];
+  const callbacks = (i: number) => ({
+    state: (m: RoomMessage) => {
+      messages[i] = m;
+    },
+    connection: () => {},
+    error: (m: string) => errors.push(m),
+  });
+  const ha = await FirebaseTransport.open(callbacks(0), undefined, '방장', false, async () => host);
+  const gb = await FirebaseTransport.open(
+    callbacks(1),
+    ha.code,
+    '참가자',
+    false,
+    async () => guest,
+  );
+  transports.push(ha, gb);
+  await expect.poll(() => messages.every((m) => m?.canAct) && messages.length === 2).toBe(true);
+  for (const player of [0, 1] as const) {
+    const game = applyAction(createFixture('국화 점수 선택'), {
+      type: 'PLAY_CARD',
+      player: 0,
+      cardId: 'm2-0',
+    }).nextState;
+    if (player === 1) {
+      game.players = [game.players[1], game.players[0]];
+      game.currentPlayer = 1;
+    }
+    await runTransaction(
+      ref(host.db, `rooms/${ha.code}/state`),
+      (value) => {
+        const state = JSON.parse(value.data);
+        state.game = game;
+        state.revision++;
+        state.events = [];
+        return encodeState(state);
+      },
+      { applyLocally: false },
+    );
+    await expect.poll(() => messages[player]?.game?.phase).toBe('SELECT_KUKJIN');
+    await ha.ready(messages[0]!.round, messages[0]!.game!.stateVersion);
+    await gb.ready(messages[1]!.round, messages[1]!.game!.stateVersion);
+    await expect.poll(() => messages.every((m) => m?.canAct)).toBe(true);
+    const m = messages[player]!;
+    await [ha, gb][player].action({
+      sequence: m.actionSequence + 1,
+      round: m.round,
+      stateVersion: m.game!.stateVersion,
+      action: { type: 'SET_KUKJIN', player, asPi: player === 0 },
+    });
+    await expect.poll(() => messages[player]?.game?.phase).toBe(player === 0 ? 'GO_STOP' : 'PLAY');
+    await expect
+      .poll(() => messages[0]?.game?.stateVersion === messages[1]?.game?.stateVersion)
+      .toBe(true);
+    expect(messages[0]!.game!.players[player].kukjinAsPi).toBe(player === 0);
+    const { hand: hostHand, ...hostView } = messages[0]!.game!;
+    const { hand: guestHand, ...guestView } = messages[1]!.game!;
+    expect(hostView).toEqual(guestView);
+  }
+  expect(errors).toEqual([]);
+  await gb.leave();
+});
+
 it('numeric allocation skips active collisions, reuses expired codes and defaults player names by role', async () => {
   const first = await user(),
     second = await user(),
@@ -266,6 +334,12 @@ it('numeric allocation skips active collisions, reuses expired codes and default
     async () => joiner,
   );
   transports.push(guest);
+  await expect
+    .poll(async () => {
+      const joined = (await get(ref(second.db, 'rooms/0456'))).val() as RoomData;
+      return joined.players?.[joiner.uid]?.name;
+    })
+    .toBe('참가자');
   const room = (await get(ref(second.db, 'rooms/0456'))).val() as RoomData;
   expect(room.meta.hostUid).toBe(second.uid);
   expect(room.players![second.uid].name).toBe('방장');

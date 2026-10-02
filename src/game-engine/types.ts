@@ -80,7 +80,7 @@ export interface GameState {
   currentPlayer: PlayerId;
   dealer: PlayerId;
   dealerDraw: [number, number];
-  phase: 'PLAY' | 'SELECT_FLOOR' | 'GO_STOP' | 'FINISHED';
+  phase: 'PLAY' | 'SELECT_FLOOR' | 'SELECT_KUKJIN' | 'GO_STOP' | 'FINISHED';
   turn: TurnState | null;
   ppukOwners: Record<number, PlayerId>;
   bonusAttachments: Record<string, number>;
@@ -95,7 +95,8 @@ export type GameAction =
   | { type: 'SELECT_FLOOR'; player: PlayerId; cardId: string }
   | { type: 'BOMB'; player: PlayerId; month: number }
   | { type: 'PASS'; player: PlayerId }
-  | { type: 'GO' | 'STOP' | 'SET_KUKJIN'; player: PlayerId };
+  | { type: 'GO' | 'STOP'; player: PlayerId }
+  | { type: 'SET_KUKJIN'; player: PlayerId; asPi?: boolean };
 export interface GameEvent {
   type: string;
   player: PlayerId;

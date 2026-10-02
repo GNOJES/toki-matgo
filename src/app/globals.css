@@ -372,6 +372,7 @@ strong {
   --surface: #284d3e;
 }
 .game-table {
+  --play-card-width: 50px;
   height: 100%;
   padding: env(safe-area-inset-top) 13px env(safe-area-inset-bottom);
   display: grid;
@@ -543,7 +544,7 @@ strong {
   position: relative;
   min-height: 0;
   container-type: size;
-  --floor-width: min(43px, 11.7vw, calc((100cqh - 82px) * 0.112));
+  --floor-width: var(--play-card-width);
 }
 .deck {
   display: flex;
@@ -583,23 +584,24 @@ strong {
 }
 .floor-grid {
   position: absolute;
-  inset: 38px 8px 44px;
+  inset: 26px 8px;
 }
 .floor-month {
   position: absolute;
   left: var(--slot-x);
   top: var(--slot-y);
-  width: 30%;
+  width: var(--floor-width);
   height: calc(var(--floor-width) * 1.5625);
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
 }
 .floor-card {
   position: absolute;
-  left: calc(var(--pile-index) * var(--floor-width) * 0.6667);
+  left: calc(var(--pile-index) * var(--floor-width) * 0.6667 * var(--stack-direction, 1));
   top: var(--pile-top, 0px);
   padding: 0;
   min-height: 0;
   width: var(--floor-width);
+  height: calc(var(--floor-width) * 1.5625);
   cursor: zoom-in;
   outline-offset: 2px;
   transition: filter 180ms;
@@ -656,12 +658,6 @@ strong {
 }
 .turn-message.callout {
   bottom: calc(50% - 30px);
-  font-family: Georgia, serif;
-  font-size: 30px;
-  font-weight: 600;
-  background: #284d3eed;
-  border: 1px solid #e4d5ad6b;
-  padding: 18px 22px;
   border-radius: 12px;
   left: 50%;
   right: auto;
@@ -669,8 +665,22 @@ strong {
   height: auto;
   white-space: nowrap;
   line-height: 1.5;
-  box-shadow: 0 8px 20px #0003;
+  color: #fff2ba;
+  background: #702d24f5;
+  border: 2px solid #f1ce70;
+  font-family: inherit;
+  font-weight: 900;
+  font-size: clamp(26px, 8vw, 36px);
+  text-shadow:
+    0 2px 0 #38160f,
+    0 0 14px #e7b74750;
+  box-shadow:
+    0 0 0 4px #352d2199,
+    0 10px 25px #0008;
+  padding: 12px 24px;
+  letter-spacing: 2px;
 }
+
 .hand-area {
   padding: 7px 5px 0;
   position: relative;
@@ -699,7 +709,7 @@ strong {
   touch-action: manipulation;
 }
 .hand-card .hwatu {
-  width: 50px;
+  width: var(--play-card-width);
   box-shadow:
     0 2px 1px #16231f99,
     0 4px 8px #11211b44;
@@ -1125,8 +1135,8 @@ strong {
     padding-left: 9px;
     padding-right: 9px;
   }
-  .hand-card .hwatu {
-    width: 46px;
+  .game-table {
+    --play-card-width: 46px;
   }
   .hand-grid {
     gap: 6px;
@@ -1165,8 +1175,8 @@ strong {
   .mini-stack .hwatu {
     width: 20px;
   }
-  .hand-card .hwatu {
-    width: 44px;
+  .game-table {
+    --play-card-width: 44px;
   }
   .hand-grid {
     gap: 5px;
@@ -1491,4 +1501,42 @@ strong {
   .home-table {
     height: 155px;
   }
+}
+
+.turn-message.callout small {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0;
+  color: #fff8df;
+}
+.kukjin-choices {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+.kukjin-choices button {
+  display: block;
+  text-align: left;
+}
+.kukjin-choices small {
+  display: block;
+  font-size: 12px;
+  margin-top: 6px;
+  font-weight: 400;
+}
+.kukjin-preview {
+  display: flex;
+  justify-content: center;
+  margin: 12px;
+}
+.kukjin-preview .hwatu {
+  width: 70px;
+}
+.table-tools .kukjin-button {
+  color: #ffed9c;
+  font-weight: 700;
+  padding: 6px 9px;
+  border: 1px solid #d3ad55;
+  background: #19372eee;
+  border-radius: 7px;
 }
