@@ -48,4 +48,4 @@ SDK 자동 재접속, `.info/connected`, 세션별 `connections/{UUID}`와 `onDi
 
 ## PWA
 
-manifest, 192/512 PNG와 SVG 아이콘, standalone, safe area, dvh, production service worker. 카드/아이콘 precache, 사용한 Next static chunks cache. 첫 온라인 로드 후 네트워크 없이 홈/싱글플레이 가능. Firebase/API/RSC 응답은 캐시하지 않는다. 프런트 개정 시 sw cache version도 갱신할 것.
+manifest, 192/512 PNG와 SVG 아이콘, standalone, safe area, dvh, production service worker. 카드/아이콘 precache, 사용한 Next static chunks cache. 첫 온라인 로드 후 네트워크 없이 홈/싱글플레이 가능. Firebase/API/RSC 응답은 캐시하지 않는다. `predev` / `prebuild` / `prebuild:vercel`에서 `version-card-assets.mjs`가 카드 파일의 SHA-256으로 `card-assets.json`과 워커 캐시 버전을 자동 생성한다. 카드 주소에 내용 해시를 붙여 옛 워커에서도 새 그림을 구분한다. 설치 중 브라우저 HTTP 캐시를 재검증하고, 준비가 끝난 워커는 skipWaiting / claim으로 탭 종료 없이 적용한다. React의 단일 공유 구독은 워커가 보낸 카드 주소를 반영하며 진행 중인 게임을 새로고침하지 않는다. 이전 캐시의 Next chunks는 현재 캐시에 옮겨 오프라인 상태의 열린 게임을 보호한다. 캐시 정리는 toki 접두사에 한정하고, 이미지 조회는 현재 버전 캐시만 사용한다. 재접속·화면 복귀 및 화면이 열린 동안 5분 간격으로 워커 업데이트를 확인한다.

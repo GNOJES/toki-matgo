@@ -188,11 +188,11 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
   expect(initial[0].game.deck.length).toBeGreaterThan(0);
   await expect(pa.getByTestId('opponent-hand').locator('img').first()).toHaveAttribute(
     'src',
-    '/cards/back.svg',
+    /^\/cards\/back\.svg\?v=[a-f0-9]+$/,
   );
   await expect(pb.getByTestId('opponent-hand').locator('img').first()).toHaveAttribute(
     'src',
-    '/cards/back.svg',
+    /^\/cards\/back\.svg\?v=[a-f0-9]+$/,
   );
   let steps = 0;
   for (; steps < 4; steps++) {

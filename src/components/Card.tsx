@@ -1,3 +1,6 @@
+'use client';
+import { useSyncExternalStore } from 'react';
+import { subscribeCardAssets, getCardAssets, getServerCardAssets } from '../lib/card-assets';
 import Image from 'next/image';
 import type { Card as HwatuCard } from '../game-engine/types';
 export function Card({
@@ -9,10 +12,12 @@ export function Card({
   back?: boolean;
   className?: string;
 }) {
+  const assets = useSyncExternalStore(subscribeCardAssets, getCardAssets, getServerCardAssets);
+  const id = back ? 'back' : (card?.id ?? 'back');
   return (
     <span className={`hwatu ${className}`}>
       <Image
-        src={`/cards/${back ? 'back' : (card?.id ?? 'back')}.${back || !card || card.isBonus ? 'svg' : 'webp'}`}
+        src={assets[id]}
         alt={back ? '화투 뒷면' : (card?.name ?? '화투 뒷면')}
         width={64}
         height={100}

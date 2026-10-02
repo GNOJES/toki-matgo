@@ -76,7 +76,10 @@ test('mobile chooses a floor card before striking it, flips at the deck and stri
   expect(coords.y).toBeCloseTo(targetRect!.y - board!.y, 0);
   const flip = page.locator('.card-motion.flip[data-moving-card-id="m1-3"]');
   await expect(flip).toBeVisible();
-  await expect(flip.locator('.flip-back img')).toHaveAttribute('src', '/cards/back.svg');
+  await expect(flip.locator('.flip-back img')).toHaveAttribute(
+    'src',
+    /^\/cards\/back\.svg\?v=[a-f0-9]+$/,
+  );
   const deck = await page.locator('.deck .hwatu').boundingBox();
   const flipped = await flip.boundingBox();
   expect(flipped!.x).toBeCloseTo(deck!.x, 0);

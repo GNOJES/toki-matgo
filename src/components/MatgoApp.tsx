@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import QRCode from 'qrcode';
+import { registerPwa } from '../lib/register-pwa';
 import { cardFlight, type FlightGeometry } from '../lib/card-motion';
 import { syncFloorLayout, FLOOR_PLACES, type FloorLayout } from '../lib/floor-layout';
 import { useAppBack } from '../lib/use-app-back';
@@ -499,23 +500,9 @@ export function MatgoApp() {
       setCodeInput(code);
       setScreen('friends');
     }
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-      void navigator.serviceWorker
-        .register('/sw.js')
-        .then(() => navigator.serviceWorker.ready)
-        .then((registration) => {
-          // The first load's JS/CSS arrived before the worker controlled this page.
-          // Explicitly cache those assets so even the first subsequent offline reload works.
-          const urls = Array.from(
-            document.querySelectorAll<HTMLScriptElement | HTMLLinkElement>(
-              'script[src], link[rel="stylesheet"][href]',
-            ),
-          ).map((el) => ('src' in el ? el.src : el.href));
-          registration.active?.postMessage({ type: 'CACHE_APP', urls });
-        })
-        .catch(() => {});
-    }
+    const cleanupPwa = registerPwa();
     return () => {
+      cleanupPwa();
       generation.current++;
       connectionAttempt.current++;
       multiplayer.current?.dispose();

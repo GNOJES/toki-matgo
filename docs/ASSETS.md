@@ -17,4 +17,4 @@
 
 보너스 쌍피 2장은 크림색 바탕·빨간 테두리·수묵담채 느낌의 귀여운 토끼 캐릭터와 큰 숫자 2를 넣은 SVG 카드다. 토끼는 내장 imagegen으로 생성한 그림을 사용하며, 원본은 `assets/rabbit/ink-mascot.png`에 보관한다. 빨강·초록 배경과 캐릭터 방향으로 구분한다. [한게임 공식 보너스패 안내](https://hangame-images.toastoven.net/hangame/pc/gostop/introduce/html/duelgo/guide_duelgo03_04.html)의 큰 숫자와 캐릭터 구성을 참고했으며 원본 그림을 복사하지 않았다. 뒷면과 앱 아이콘은 기존 직접 제작한 SVG를 유지한다. 생성 소스는 `scripts/generate-card-extras.mjs`. 이들은 위 작가의 48장 세트에 포함되지 않는다. 소리는 Web Audio로 생성한 짧은 잡음이며 외부 게임 사운드를 사용하지 않는다.
 
-PWA 캐시 버전은 `toki-v8-bonus-no-label`이다. 기존 캐시를 정리하고 WebP 48장과 최신 화면을 미리 저장한다.
+PWA 캐시와 카드 주소 버전은 파일 내용의 SHA-256에서 자동 생성한다. 개발/배포용 빌드 전에 `scripts/version-card-assets.mjs`가 실행된다. 새 워커는 탭 종료 없이 적용되며 열린 화면의 카드 주소도 갱신한다. 오프라인 카드 표시는 유지한다.
