@@ -1,0 +1,19 @@
+Toki Matgo social preview illustration (2026-10-03)
+
+The rabbit, poster lettering and ink-wash background were generated with
+Codex's built-in image generation tool for Toki Matgo. The depicted hwatu
+cards were generated using the following artwork as visual references:
+
+Set of Hwatu by Marcus Richert, published February 22, 2021.
+Source: https://www.marcusrichert.com/images/hwatu/
+Based on Hanafuda graphics by Louie Mantia, Jr. (http://louiemantia.com/).
+Original contributions: https://commons.wikimedia.org/wiki/Special:Contributions/Louiemantia
+
+Changes: ink-wash reinterpretation of card motifs in an illustrated rabbit
+poster, addition of Korean title and subtitle, resize to 1200x630 JPEG.
+
+This adapted social preview artwork is made available under Creative Commons
+Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+License: https://creativecommons.org/licenses/by-sa/4.0/
+No endorsement by the original artists is implied.
+This image license notice does not license the application code.
