@@ -4,10 +4,12 @@ export function Settings({
   prefs,
   onChange,
   onClose,
+  onRules,
 }: {
   prefs: Preferences;
   onChange: (p: Preferences) => void;
   onClose: () => void;
+  onRules: () => void;
 }) {
   return (
     <Modal title="편안하게, 내 속도로" onClose={onClose}>
@@ -69,6 +71,9 @@ export function Settings({
         />
       </label>
       <p className="fine-print">진동은 지원되는 기기에서 작동해요.</p>
+      <button className="secondary" onClick={onRules}>
+        맞고 안내
+      </button>
       <p className="fine-print">
         화투 그림:{' '}
         <a href="https://www.marcusrichert.com/images/hwatu/" target="_blank" rel="noreferrer">

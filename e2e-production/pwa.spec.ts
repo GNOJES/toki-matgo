@@ -14,7 +14,7 @@ test('production caches first load, reloads offline, plays single and hides debu
       page.evaluate(async () => {
         const reg = await navigator.serviceWorker.getRegistration();
         if (!reg?.active) return false;
-        const cache = await caches.open('toki-v2-hwatu');
+        const cache = await caches.open('toki-v3-navigation');
         const keys = await cache.keys();
         return (
           keys.filter((r) => r.url.includes('/_next/static/')).length >= 3 &&
@@ -26,6 +26,11 @@ test('production caches first load, reloads offline, plays single and hides debu
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole('button', { name: /혼자 치기/ })).toBeVisible();
+  await expect(page).toHaveTitle('토끼맞고 · 마주 앉은 것처럼');
+  await page.getByRole('button', { name: '설정', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '편안하게, 내 속도로' })).toBeVisible();
+  await page.goBack();
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
   await page.getByRole('button', { name: /혼자 치기/ }).click();
   await expect(page.getByTestId('game-table')).toBeVisible();
   await expect

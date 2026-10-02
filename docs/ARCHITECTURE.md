@@ -8,7 +8,9 @@ PLAY / SELECT_FLOOR / GO_STOP / FINISHED. 턴 보류 카드는 `TurnState`에 �
 
 ## 프런트엔드
 
-Next.js App Router + React. 화면은 한국어 모바일 전용 세로 게임판. 손패는 5 × 2, 상대 손패는 실제 장수만큼 뒷면, 획득은 광/열끗/띠/피 그룹. DOM 이벤트는 엔진 action에만 연결된다.
+Next.js App Router + React. 화면은 한국어 모바일 전용 세로 게임판. 한글 제품명은 토끼맞고, 영어 저장소 이름은 toki-matgo. 손패는 5 × 2이고 월 표식을 붙이지 않는다. 상대 손패는 실제 장수만큼 뒷면, 획득은 광/열끗/띠/피 그룹. 패 내기·먹을 패 선택은 엔진 action에 연결되며 바닥패 확대는 UI 상태만 바꾼다. 같은 월의 바닥패도 겹치지 않고 나란히 펼쳐 각 그림 전체를 표시한다.
+
+`useAppBack`은 Next의 history 필드를 유지하는 같은 URL의 보호 entry를 만든다. 첫 실제 사용자 입력 때에도 한 번 활성화하며, 매 화면 렌더마다 history를 늘리지 않는다. 브라우저/Android Back 시 먼저 보호 entry를 복구하고 최상위 dialog의 cancel 동작을 실행한다. 설정 → 맞고 안내 등의 중첩 창은 한 단계씩 닫힌다. 열린 창이 없으면 친구 입력 화면은 홈으로, 게임/대기실은 나가기 확인으로 이동한다. 홈에서는 홈을 유지한다. 필수 패 선택·고/스톱·결과 창은 기존의 취소 불가 판정을 유지한다. 이벤트 listener는 unmount 때 모두 해제한다.
 
 싱글플레이 authoritative state는 React 밖 ref에 있고 UI는 `projectState`만 렌더링. CPU `chooseAction`도 동일한 개인별 projection만 받는다. 서버 모듈은 type-only import이며 클라이언트 번들로 실행 코드가 들어가지 않는다.
 

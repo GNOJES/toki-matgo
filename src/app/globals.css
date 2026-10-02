@@ -87,17 +87,17 @@ strong {
   height: 46px;
 }
 .brand {
-  font-family: Georgia, serif;
-  font-size: 38px;
+  font-family: inherit;
+  font-size: 29px;
   font-weight: 700;
-  letter-spacing: -2px;
+  letter-spacing: -1.5px;
 }
 .brand span {
   font-family: inherit;
-  font-size: 12px;
-  letter-spacing: 2px;
-  font-weight: 500;
-  margin-left: 9px;
+  font-size: inherit;
+  letter-spacing: inherit;
+  font-weight: inherit;
+  margin-left: 0;
 }
 .icon-button {
   height: 44px;
@@ -201,14 +201,6 @@ strong {
 .hero-cards .hwatu {
   width: 76px;
 }
-.table-mark {
-  position: absolute;
-  bottom: 18px;
-  right: 22px;
-  color: #e0e7ce7d;
-  font-size: 10px;
-  letter-spacing: 3px;
-}
 .hwatu {
   display: inline-block;
   width: 54px;
@@ -273,20 +265,6 @@ strong {
 .home-actions button > span:last-child {
   font-size: 22px;
   font-weight: 400;
-}
-.home-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: auto;
-}
-.home-footer button {
-  padding: 0;
-  font-size: 10px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 .connection-screen {
   min-height: 100svh;
@@ -415,17 +393,17 @@ strong {
   min-height: 44px;
 }
 .table-logo {
-  font-family: Georgia, serif;
-  font-size: 26px;
+  font-family: inherit;
+  font-size: 22px;
   letter-spacing: -1px;
   margin-left: 4px;
 }
 .table-logo span {
   font-family: inherit;
-  font-size: 9px;
-  letter-spacing: 1px;
-  margin-left: 4px;
-  color: #c4d3bf;
+  font-size: inherit;
+  letter-spacing: inherit;
+  margin-left: 0;
+  color: inherit;
 }
 .round {
   margin-left: auto;
@@ -602,7 +580,7 @@ strong {
 }
 .floor-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px 5px;
   align-content: center;
   width: 100%;
@@ -612,14 +590,19 @@ strong {
   position: relative;
   height: 82px;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
 }
 .floor-card {
-  position: absolute;
+  position: relative;
   padding: 0;
   min-height: 0;
-  left: calc(var(--offset) * 10px);
-  top: calc(var(--offset) * 2px);
   width: 48px;
+  flex: 0 1 48px;
+  min-width: 0;
+  cursor: zoom-in;
   outline-offset: 2px;
   transition:
     transform 180ms,
@@ -646,11 +629,11 @@ strong {
   gap: 6px 5px;
 }
 .floor-grid.dense .floor-month {
-  height: 63px;
+  height: 60px;
 }
 .floor-grid.dense .floor-card {
   width: 37px;
-  left: calc(var(--offset) * 7px);
+  flex-basis: 37px;
 }
 .pending-cards {
   position: absolute;
@@ -719,7 +702,7 @@ strong {
   touch-action: manipulation;
 }
 .hand-card .hwatu {
-  width: 46px;
+  width: 50px;
   box-shadow:
     0 2px 1px #16231f99,
     0 4px 8px #11211b44;
@@ -733,17 +716,11 @@ strong {
     0 0 0 2px #e6c78c,
     0 4px 12px #0005;
 }
-.hand-caption {
-  font-size: 8px;
-  color: #becdb8;
-  line-height: 12px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.hand-caption i {
-  height: 3px;
-  width: 3px;
+.hand-match-dot {
+  position: absolute;
+  bottom: -5px;
+  height: 4px;
+  width: 4px;
   border-radius: 50%;
   background: #e6d5a6;
 }
@@ -1114,13 +1091,20 @@ strong {
   }
   .floor-card {
     width: 43px;
-    left: calc(var(--offset) * 8px);
+    flex-basis: 43px;
   }
   .floor-month {
     height: 73px;
   }
   .hand-card .hwatu {
-    width: 44px;
+    width: 46px;
+  }
+  .floor-grid.dense .floor-month {
+    height: 55px;
+  }
+  .floor-grid.dense .floor-card {
+    width: 35px;
+    flex-basis: 35px;
   }
   .hand-grid {
     gap: 6px;
@@ -1160,7 +1144,7 @@ strong {
     width: 20px;
   }
   .hand-card .hwatu {
-    width: 40px;
+    width: 44px;
   }
   .hand-grid {
     gap: 5px;
@@ -1170,9 +1154,11 @@ strong {
   }
   .floor-card {
     width: 42px;
+    flex-basis: 42px;
   }
   .floor-grid.dense .floor-card {
     width: 30px;
+    flex-basis: 30px;
   }
   .floor-grid.dense .floor-month {
     height: 50px;

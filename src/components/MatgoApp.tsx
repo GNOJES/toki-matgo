@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { io, type Socket } from 'socket.io-client';
 import QRCode from 'qrcode';
 import { cardFlight, type FlightGeometry } from '../lib/card-motion';
+import { useAppBack } from '../lib/use-app-back';
 import { Card } from './Card';
 import { Modal } from './Modal';
 import { Settings } from './Settings';
@@ -558,8 +559,13 @@ export function MatgoApp() {
     setExit(false);
     setInvite(false);
     setError('');
-    history.replaceState(null, '', window.location.pathname);
+    history.replaceState({ ...history.state }, '', window.location.pathname);
   };
+  useAppBack(() => {
+    setSelected(null);
+    if (screen === 'friends') leave();
+    else if (screen === 'game' || screen === 'lobby') setExit(true);
+  });
   const inviteUrl =
     typeof window !== 'undefined' && room ? `${window.location.origin}/?room=${room.code}` : '';
   useEffect(() => {
@@ -576,7 +582,7 @@ export function MatgoApp() {
     view.currentPlayer === me &&
     (mode === 'single' || (connected && !!room?.canAct));
   const nick = nickname.trim() || '나';
-  const opponent = mode === 'single' ? '토키' : (room?.names[1 - me] ?? '친구');
+  const opponent = mode === 'single' ? '토끼' : (room?.names[1 - me] ?? '친구');
   const zoomCards = (cards: HwatuCard[], title: string) => setZoom({ cards, title });
   const tapCard = (c: HwatuCard) => {
     if (held.current) {
@@ -620,8 +626,16 @@ export function MatgoApp() {
       {screen === 'home' && (
         <section className="home">
           <header className="home-header">
-            <a className="brand" href="/" aria-label="토키 맞고 홈">
-              toki<span>맞고</span>
+            <a
+              className="brand"
+              href="/"
+              aria-label="토끼맞고 홈"
+              onClick={(event) => {
+                event.preventDefault();
+                leave();
+              }}
+            >
+              토끼<span>맞고</span>
             </a>
             <button className="icon-button" aria-label="설정" onClick={() => setSettings(true)}>
               <SettingsIcon />
@@ -652,12 +666,11 @@ export function MatgoApp() {
                 </span>
               ))}
             </div>
-            <span className="table-mark">花 · 토키</span>
           </div>
           <div className="home-actions">
             <button className="primary" onClick={() => startSingle()}>
               <span>
-                혼자 치기<small>토키와 편안한 연습 한 판</small>
+                혼자 치기<small>토끼와 편안한 연습 한 판</small>
               </span>
               <span aria-hidden>↗</span>
             </button>
@@ -674,10 +687,6 @@ export function MatgoApp() {
               <span aria-hidden>↗</span>
             </button>
           </div>
-          <footer className="home-footer">
-            <button onClick={() => setRules(true)}>처음이라면, 맞고 안내</button>
-            <span>돈 없이, 점수로만 즐겨요.</span>
-          </footer>
         </section>
       )}
       {screen === 'friends' && (
@@ -687,7 +696,7 @@ export function MatgoApp() {
               ←
             </button>
             <span className="brand">
-              toki<span>맞고</span>
+              토끼<span>맞고</span>
             </span>
             <button className="icon-button" aria-label="설정" onClick={() => setSettings(true)}>
               <SettingsIcon />
@@ -749,7 +758,7 @@ export function MatgoApp() {
               ←
             </button>
             <span className="brand">
-              toki<span>맞고</span>
+              토끼<span>맞고</span>
             </span>
           </header>
           <span className="eyebrow">화투판을 펼쳤어요</span>
@@ -780,7 +789,7 @@ export function MatgoApp() {
               ←
             </button>
             <span className="table-logo">
-              toki <span>맞고</span>
+              토끼<span>맞고</span>
             </span>
             <span className="round">{round}번째 판</span>
             {mode === 'multi' && (
@@ -835,26 +844,25 @@ export function MatgoApp() {
                   <div className="floor-month" key={month} data-floor-month={month}>
                     {view.floor
                       .filter((c) => c.month === month)
-                      .map((c, i) => (
+                      .map((c) => (
                         <button
                           key={c.id}
                           data-floor-card-id={c.id}
                           className={`floor-card ${view.options.includes(c.id) || highlight.includes(c.id) || selected?.month === c.month ? 'highlighted' : ''}`}
-                          style={
-                            {
-                              '--offset': i,
-                              '--count': view.floor.filter((x) => x.month === month).length,
-                            } as CSSProperties
-                          }
-                          disabled={
-                            !canPlay ||
-                            view.phase !== 'SELECT_FLOOR' ||
-                            !view.options.includes(c.id)
-                          }
-                          onClick={() =>
-                            dispatch({ type: 'SELECT_FLOOR', player: me, cardId: c.id })
-                          }
-                          aria-label={`${c.name}${view.options.includes(c.id) ? ' 먹기' : ''}`}
+                          onClick={() => {
+                            if (
+                              canPlay &&
+                              view.phase === 'SELECT_FLOOR' &&
+                              view.options.includes(c.id)
+                            )
+                              dispatch({ type: 'SELECT_FLOOR', player: me, cardId: c.id });
+                            else
+                              zoomCards(
+                                view.floor.filter((card) => card.month === month),
+                                '바닥패 크게 보기',
+                              );
+                          }}
+                          aria-label={`${c.name}${canPlay && view.phase === 'SELECT_FLOOR' && view.options.includes(c.id) ? ' 먹기' : ' 바닥패 확대'}`}
                         >
                           <Card card={c} />
                         </button>
@@ -940,10 +948,9 @@ export function MatgoApp() {
                     onContextMenu={(e) => e.preventDefault()}
                   >
                     <Card card={c} />
-                    <span className="hand-caption">
-                      {c.isBonus ? '쌍피' : `${c.month}월`}
-                      {view.floor.some((f) => f.month === c.month && !c.isBonus) && <i />}
-                    </span>
+                    {view.floor.some((f) => f.month === c.month && !c.isBonus) && (
+                      <i className="hand-match-dot" aria-hidden="true" />
+                    )}
                   </button>
                 ))}
             </div>
@@ -986,7 +993,12 @@ export function MatgoApp() {
         </div>
       )}
       {settings && (
-        <Settings prefs={prefs} onChange={updatePrefs} onClose={() => setSettings(false)} />
+        <Settings
+          prefs={prefs}
+          onChange={updatePrefs}
+          onClose={() => setSettings(false)}
+          onRules={() => setRules(true)}
+        />
       )}
       {rules && (
         <Modal title="맞고, 천천히 익혀요" onClose={() => setRules(false)}>
@@ -1344,7 +1356,7 @@ function InviteContent({
     try {
       if (navigator.share)
         await navigator.share({
-          title: '토키 맞고 · 같이 한 판',
+          title: '토끼맞고 · 같이 한 판',
           text: `우리 화투판에 들어와요. 방 코드 ${code}`,
           url,
         });

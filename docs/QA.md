@@ -16,9 +16,13 @@
 | 멀티 2 context · Chromium                        | 생성/URL 참여, 바닥/점수/턴/종료/다음 판 동일                   |
 | 숨김 정보 · 실제 수신 WebSocket                  | initial/event/reconnect payload에 상대 손패 ID 없음             |
 | 재접속 · Chromium                                | B offline → A 연결 대기 → B online/새로고침 → 같은 version 복원 |
+| 메뉴 Back · Chromium / WebKit                    | 설정/중첩 안내/확대 닫기, 게임 나가기 확인, 홈 유지·재로딩 통과 |
+| 바닥패 2장/3장 · Chromium / WebKit               | 그림 전체 표시·겹침 없음·확대, 필수 패 선택 Back 상태불변 통과  |
 | production PWA · Chromium                        | 첫 로드 캐시 → offline 새로고침 → 싱글 패 내기, debug 비노출    |
 
 `npm test`, `npm run typecheck`, `npm run test:e2e`, `npm run build`, `npm run test:pwa`로 재현. Playwright report/trace는 git 제외. 모바일 스크린샷은 `test-results/mobile-*.png`; 대표 화면은 `docs/screenshots`.
+
+화면·게임·뒤로가기 E2E는 총 14개다. 손패 버튼의 월 텍스트 제거, 첫 화면 문구 제거, 토끼맞고 제목도 확인한다. 실제 Android의 하드웨어/제스처 Back 및 키보드가 열린 상태의 Back은 출시 전 실기기 확인 항목이다.
 
 ## 규칙 회귀
 
