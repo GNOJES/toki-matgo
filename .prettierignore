@@ -1,0 +1,13 @@
+node_modules
+.next
+.next-prod
+.next-*
+.vercel
+package-lock.json
+playwright-report
+test-results
+public/cards
+public/icon*.svg
+AGENTS.md
+CLAUDE.md
+next-env.d.ts
