@@ -4,9 +4,11 @@ import type { Card as HwatuCard, PlayerView } from '../game-engine/types';
 export function Captured({
   player,
   onZoom,
+  hiddenIds = [],
 }: {
   player: PlayerView;
   onZoom: (cards: HwatuCard[], title: string) => void;
+  hiddenIds?: string[];
 }) {
   const groups = [
     { name: '광', cards: player.captured.filter((c) => c.isGwang) },
@@ -41,7 +43,9 @@ export function Captured({
               g.cards.map((c, i) => (
                 <span
                   key={c.id}
+                  data-captured-card-id={c.id}
                   style={{
+                    visibility: hiddenIds.includes(c.id) ? 'hidden' : undefined,
                     left: `${(i / Math.max(1, g.cards.length - 1)) * Math.min(48, g.cards.length * 8)}%`,
                   }}
                 >

@@ -3,7 +3,7 @@ export type FloorLayout = Map<number, { slot: number; cards: Map<string, number>
 // Twelve fixed places around the center deck; groups never reflow after a capture.
 export const FLOOR_PLACES = [
   [4, 10, -5],
-  [35, 9, 4],
+  [35, 20, 4],
   [66, 10, -4],
   [1, 30, 6],
   [69, 30, -6],
@@ -12,10 +12,10 @@ export const FLOOR_PLACES = [
   [1, 70, 4],
   [69, 70, -5],
   [4, 90, -4],
-  [35, 91, 6],
+  [35, 80, 6],
   [66, 90, -3],
 ];
-const order = [1, 6, 10, 5, 2, 9, 4, 7, 0, 11, 3, 8];
+const order = [3, 4, 5, 6, 7, 8, 1, 10, 0, 2, 9, 11];
 export function syncFloorLayout(previous: FloorLayout, cards: Card[]): FloorLayout {
   const result: FloorLayout = new Map();
   const months = new Set(cards.filter((c) => !c.isBonus).map((c) => c.month));

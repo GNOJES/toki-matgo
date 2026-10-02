@@ -21,9 +21,9 @@ async function act(page: Page) {
     await page.getByRole('button', { name: '스톱 이번 판을 마쳐요' }).click();
   else if (phase === 'SELECT_FLOOR') await page.locator('.floor-choices button').first().click();
   else {
-    const pass = page.getByRole('button', { name: /덱 뒤집기/ });
-    if ((await page.locator('.hand-card').count()) === 0 && (await pass.isVisible()))
-      await pass.click();
+    const pass = page.getByRole('button', { name: /폭탄패 사용/ });
+    if ((await page.locator('.hand-card[data-card-id]').count()) === 0 && (await pass.isVisible()))
+      await pass.first().click();
     else {
       await page.locator('.hand-card[aria-disabled="false"]').first().click();
       if (await page.getByRole('button', { name: '한 장만 그냥 내기' }).isVisible())
@@ -77,7 +77,7 @@ for (const [width, height] of [
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(height);
     await expect(page.getByTestId('opponent-hand')).toHaveText('10장');
     await expect(page.getByTestId('opponent-hand').locator('img')).toHaveCount(0);
-    expect(await page.locator('.hand-card').count()).toBe(10);
+    expect(await page.locator('.hand-card[data-card-id]').count()).toBe(10);
     await expect
       .poll(() =>
         page

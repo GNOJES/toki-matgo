@@ -11,6 +11,7 @@ import { RabbitMark } from './RabbitMark';
 import { Modal } from './Modal';
 import { Settings } from './Settings';
 import { Captured } from './Captured';
+import { BombPassCard } from './BombPassCard';
 import { CARDS } from '../game-engine/cards';
 import { applyAction, createGame, projectState } from '../game-engine/engine';
 import { chooseAction } from '../game-engine/ai';
@@ -233,7 +234,7 @@ export function MatgoApp() {
             };
             if (e.type === 'CARD_PLAYED' || e.type === 'BOMB') {
               const cards = e.cards ?? [];
-              const source = cardFlight(cards, 'play', mine);
+              const source = cardFlight(cards, cards[0]?.isBonus ? 'bonus' : 'play', mine);
               const choice = events.some(
                 (event) => event.type === 'FLOOR_MATCH_REQUIRED' && event.stage === 'hand',
               );
@@ -247,7 +248,19 @@ export function MatgoApp() {
                   shown.players[e.player].handCount - cards.length,
                 );
               publish({ ...shown });
-              if (choice) {
+              if (cards[0]?.isBonus) {
+                setStatus('보너스 쌍피');
+                setMotion({
+                  key: motionKey++,
+                  cards,
+                  kind: 'bonus',
+                  other: !mine,
+                  geometry: source,
+                  duration: 360 * factor,
+                });
+                if (!(await pause(360))) return;
+                if (!(await pause(650))) return;
+              } else if (choice) {
                 waitingFlight.current.hand = { cards, geometry: source, mine };
                 setMotion({
                   key: motionKey++,
@@ -321,12 +334,18 @@ export function MatgoApp() {
               e.type === 'PI_TRANSFERRED' ||
               e.type === 'BONUS_CAPTURED'
             ) {
+              const kind =
+                e.type === 'PI_TRANSFERRED'
+                  ? 'transfer'
+                  : e.type === 'BONUS_CAPTURED'
+                    ? 'bonus-capture'
+                    : 'capture';
               setMotion({
                 key: motionKey++,
                 cards: e.cards ?? [],
-                kind: 'capture',
+                kind,
                 other: !mine,
-                geometry: cardFlight(e.cards ?? [], 'capture', mine),
+                geometry: cardFlight(e.cards ?? [], kind, mine),
                 duration: 450 * factor,
               });
               feedback(prefsRef.current);
@@ -1020,7 +1039,11 @@ export function MatgoApp() {
             handCount={view.players[1 - me].handCount}
             passes={view.players[1 - me].bombPasses}
           />
-          <Captured player={view.players[1 - me]} onZoom={zoomCards} />
+          <Captured
+            player={view.players[1 - me]}
+            onZoom={zoomCards}
+            hiddenIds={motion?.kind === 'transfer' ? motion.cards.map((c) => c.id) : []}
+          />
           <div className="floor-area" data-testid="floor-area">
             <div className="deck" aria-label={`뒤집힌 덱 ${view.deckCount}장`}>
               <Card back />
@@ -1190,7 +1213,11 @@ export function MatgoApp() {
             dealer={view.dealer === me}
             wins={stats.wins[me]}
           />
-          <Captured player={view.players[me]} onZoom={zoomCards} />
+          <Captured
+            player={view.players[me]}
+            onZoom={zoomCards}
+            hiddenIds={motion?.kind === 'transfer' ? motion.cards.map((c) => c.id) : []}
+          />
           <div className="hand-area" data-testid="hand-area">
             <div className="hand-grid">
               {[...view.hand]
@@ -1227,16 +1254,20 @@ export function MatgoApp() {
                     <Card card={c} />
                   </button>
                 ))}
+              {Array.from({ length: view.players[me].bombPasses }, (_, i) => (
+                <button
+                  key={`bomb-pass-${i}`}
+                  className="hand-card bomb-pass"
+                  data-bomb-pass={i}
+                  aria-label="폭탄패 사용 · 덱 한 장 뒤집기"
+                  aria-disabled={!canPlay || view.phase !== 'PLAY'}
+                  disabled={!canPlay || view.phase !== 'PLAY'}
+                  onClick={() => dispatch({ type: 'PASS', player: me })}
+                >
+                  <BombPassCard />
+                </button>
+              ))}
             </div>
-            {view.players[me].bombPasses > 0 && (
-              <button
-                className="pass-button"
-                disabled={!canPlay || view.phase !== 'PLAY'}
-                onClick={() => dispatch({ type: 'PASS', player: me })}
-              >
-                덱 뒤집기 · {view.players[me].bombPasses}회
-              </button>
-            )}
             {!view.hand.length && view.players[me].bombPasses === 0 && (
               <p className="muted">손패를 모두 냈어요.</p>
             )}
@@ -1560,6 +1591,8 @@ export function MatgoApp() {
                 '뻑과 보너스',
                 '바닥 두 장 · 따닥',
                 '3장 폭탄',
+                '폭탄과 피 강탈',
+                '보너스 손패',
                 '흔들기',
                 '자뻑',
                 '열두 달 바닥',

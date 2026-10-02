@@ -5,6 +5,8 @@ export const FIXTURE_NAMES = [
   '뻑과 보너스',
   '바닥 두 장 · 따닥',
   '3장 폭탄',
+  '폭탄과 피 강탈',
+  '보너스 손패',
   '흔들기',
   '자뻑',
   '열두 달 바닥',
@@ -43,6 +45,13 @@ export function createFixture(name: FixtureName, seed = 12345): GameState {
     },
     '바닥 두 장 · 따닥': { hand: ['m1-2'], floor: ['m1-0', 'm1-1'], draw: ['m1-3'], opponent: [] },
     '3장 폭탄': { hand: ['m1-0', 'm1-1', 'm1-2'], floor: ['m1-3'], draw: ['m4-2'], opponent: [] },
+    '보너스 손패': { hand: ['bonus-0'], floor: ['m1-0'], draw: ['m4-2'], opponent: [] },
+    '폭탄과 피 강탈': {
+      hand: ['m1-0', 'm1-1', 'm1-2'],
+      floor: ['m1-3'],
+      draw: ['m4-2'],
+      opponent: [],
+    },
     흔들기: { hand: ['m1-0', 'm1-1', 'm1-2'], floor: [], draw: ['m4-2'], opponent: ['m1-3'] },
     자뻑: { hand: ['m1-3'], floor: ['m1-0', 'm1-1', 'm1-2'], draw: ['m4-2'], opponent: [] },
   };
@@ -76,6 +85,11 @@ export function createFixture(name: FixtureName, seed = 12345): GameState {
     dealer: 0,
     seed,
   });
+  if (name === '폭탄과 피 강탈') {
+    const i = s.deck.findIndex((c) => c.piValue === 1);
+    if (i < 0) throw Error('피 강탈 검증용 피가 없어요.');
+    s.players[1].captured.push(...s.deck.splice(i, 1));
+  }
   if (name === '자뻑') {
     s.ppukOwners[1] = 0;
     s.players[0].ppukCount = 1;
