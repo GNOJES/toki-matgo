@@ -1418,3 +1418,77 @@ strong {
     transform: translate(var(--to-x), var(--to-y)) rotate(0deg) scale(1);
   }
 }
+
+.home-actions .history-menu {
+  min-height: 54px;
+  padding: 10px 18px;
+}
+.history-summary {
+  background: #e8ede2;
+  padding: 16px;
+  border-radius: 12px;
+}
+.history-summary h3 {
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+.history-summary strong {
+  font-size: 21px;
+}
+.history-summary p span {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+}
+.history-summary .secondary {
+  font-size: 12px;
+  min-height: 44px;
+  padding: 10px;
+}
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.history-list li {
+  border-top: 1px solid #d6dbcd;
+  padding: 14px 0;
+}
+.history-list li > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+.history-list li > div + div {
+  margin-top: 7px;
+  color: #777a6e;
+  font-size: 11px;
+}
+.history-list li span {
+  overflow-wrap: anywhere;
+}
+.history-outcome {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.history-outcome.win {
+  color: #254d3e;
+}
+.history-outcome.loss {
+  color: #a84c40;
+}
+.history-outcome.draw {
+  color: #777a6e;
+}
+.history-empty {
+  text-align: center;
+  padding: 24px 0;
+  color: #777a6e;
+}
+@media (max-height: 760px) {
+  .home-table {
+    height: 155px;
+  }
+}

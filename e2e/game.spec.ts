@@ -99,7 +99,10 @@ for (const [width, height] of [
     await page.getByRole('button', { name: '이대로 좋아요' }).click();
     await page.screenshot({ path: `test-results/mobile-${width}.png` });
   });
-test('single three complete rounds, results and next dealer', async ({ page, context }) => {
+test('mobile single rounds accumulate across reload and new session, with confirmed reset', async ({
+  page,
+  context,
+}) => {
   await speed(context);
   await page.goto('/?debug=1');
   await page.getByRole('button', { name: /혼자 치기/ }).click();
@@ -117,6 +120,40 @@ test('single three complete rounds, results and next dealer', async ({ page, con
     await expect(page.getByRole('button', { name: '한 판 더', exact: true })).toBeVisible();
     if (round < 3) await page.getByRole('button', { name: '한 판 더', exact: true }).click();
   }
+  await page.getByRole('button', { name: '대기실로', exact: true }).click();
+  await page.goto('/?debug=1');
+  await page.reload();
+  await page.getByRole('button', { name: /최근 기록/ }).click();
+  const history = page.getByRole('dialog', { name: '최근 기록', exact: true });
+  await expect(history).toContainText('총 3판');
+  await expect(history.locator('.history-list li')).toHaveCount(3);
+  await history.getByRole('button', { name: '닫기', exact: true }).click();
+  await page.getByRole('button', { name: /혼자 치기/ }).click();
+  await page.getByRole('button', { name: '개발', exact: true }).click();
+  await page.getByLabel('애니메이션 건너뛰기').check();
+  await page.getByRole('button', { name: '닫기', exact: true }).click();
+  for (let steps = 0; steps < 100; steps++) {
+    if ((await page.getByTestId('game-table').getAttribute('data-phase')) === 'FINISHED') break;
+    if (!(await act(page))) await page.waitForTimeout(150);
+  }
+  await expect(page.getByTestId('game-table')).toHaveAttribute('data-phase', 'FINISHED');
+  await page.getByRole('button', { name: '대기실로', exact: true }).click();
+  await page.getByRole('button', { name: /최근 기록/ }).click();
+  await expect(history).toContainText('총 4판');
+  await expect(history.locator('.history-list li')).toHaveCount(4);
+  await page.screenshot({ path: '/tmp/toki-recent-records.png' });
+  await history.getByRole('button', { name: '혼자 치기 기록 초기화', exact: true }).click();
+  const confirm = page.getByRole('dialog', { name: '혼자 치기 기록을 초기화할까요?' });
+  await confirm.getByRole('button', { name: '취소', exact: true }).click();
+  await expect(history).toContainText('총 4판');
+  await history.getByRole('button', { name: '혼자 치기 기록 초기화', exact: true }).click();
+  await confirm.getByRole('button', { name: '기록 초기화', exact: true }).click();
+  await expect(history).toContainText('총 0판');
+  await expect(history.locator('.history-list li')).toHaveCount(0);
+  await history.getByRole('button', { name: '닫기', exact: true }).click();
+  await page.reload();
+  await page.getByRole('button', { name: /최근 기록/ }).click();
+  await expect(history).toContainText('총 0판');
 });
 test('two contexts: Firebase room / same host state / moves / reconnect / complete game / next round', async ({
   browser,
@@ -230,6 +267,16 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
   const final = (messages[0] as any[]).filter((m) => m.game?.result).at(-1)?.game.result;
   const finalB = (messages[1] as any[]).filter((m) => m.game?.result).at(-1)?.game.result;
   expect(final).toEqual(finalB);
+  for (const [i, p] of [pa, pb].entries()) {
+    const h = await p.evaluate(() => JSON.parse(localStorage.getItem('toki.play-history.v1')!));
+    expect(h.recent).toHaveLength(1);
+    expect(h.recent[0].mode).toBe('multi');
+    expect(h.recent[0].outcome).toBe(
+      final.winner === null ? 'draw' : final.winner === i ? 'win' : 'loss',
+    );
+    expect(h.solo.wins + h.solo.losses + h.solo.draws).toBe(0);
+  }
+
   expect((messages[0] as any[]).filter((m) => m.game?.result).at(-1)?.game).toEqual(
     (messages[1] as any[]).filter((m) => m.game?.result).at(-1)?.game,
   );

@@ -12,6 +12,16 @@ import { Modal } from './Modal';
 import { Settings } from './Settings';
 import { Captured } from './Captured';
 import { BombPassCard } from './BombPassCard';
+import { PlayHistory } from './PlayHistory';
+import {
+  HISTORY_KEY,
+  emptyHistory,
+  parseHistory,
+  addResult,
+  soloStats,
+  resetSolo,
+  type PlayHistory as History,
+} from '../lib/play-history';
 import { CARDS } from '../game-engine/cards';
 import { applyAction, createGame, projectState } from '../game-engine/engine';
 import { chooseAction } from '../game-engine/ai';
@@ -79,6 +89,11 @@ export function MatgoApp() {
   const [round, setRound] = useState(1);
   const roundRef = useRef(1);
   const [stats, setStats] = useState<Stats>(emptyStats);
+  const [playHistory, setPlayHistory] = useState<History>(emptyHistory);
+  const [showHistory, setShowHistory] = useState(false);
+  const historyRef = useRef<History>(emptyHistory());
+  const soloRoundId = useRef('');
+  const recorded = useRef(new Set<string>());
   const [dealerNotice, setDealerNotice] = useState(false);
   const floorLayout = useRef<FloorLayout>(new Map());
   const [impact, setImpact] = useState<{ key: number; x: number; y: number } | null>(null);
@@ -420,6 +435,16 @@ export function MatgoApp() {
     },
     [publish],
   );
+  const saveResult = useCallback((input: Parameters<typeof addResult>[1]) => {
+    if (recorded.current.has(input.id)) return;
+    recorded.current.add(input.id);
+    const stored = getItem(HISTORY_KEY);
+    const next = addResult(stored === null ? historyRef.current : parseHistory(stored), input);
+    historyRef.current = next;
+    setPlayHistory(next);
+    storeItem(HISTORY_KEY, JSON.stringify(next));
+    if (input.mode === 'single') setStats(soloStats(next));
+  }, []);
   const connectRoom = useCallback(
     (code?: string, _uid?: string, name?: string) => {
       const attempt = ++connectionAttempt.current;
@@ -468,6 +493,14 @@ export function MatgoApp() {
                     return;
                   }
                   if (data.game) {
+                    if (data.game.result)
+                      saveResult({
+                        id: `multi:${data.code}:${data.expiresAt}:${data.round}:${data.me}`,
+                        mode: 'multi',
+                        opponent: data.names[1 - data.me],
+                        me: data.me,
+                        result: data.game.result,
+                      });
                     setScreen('game');
                     if (newRound) {
                       floorLayout.current = new Map();
@@ -512,9 +545,13 @@ export function MatgoApp() {
           }
         });
     },
-    [present, publish],
+    [present, publish, saveResult],
   );
   useEffect(() => {
+    const storedHistory = parseHistory(getItem(HISTORY_KEY));
+    historyRef.current = storedHistory;
+    setPlayHistory(storedHistory);
+    setStats(soloStats(storedHistory));
     setPrefs(readPreferences());
     setNickname(getItem('toki.nickname.v1') ?? '');
     const params = new URLSearchParams(window.location.search);
@@ -536,8 +573,18 @@ export function MatgoApp() {
       setCodeInput(code);
       setScreen('friends');
     }
+    const syncHistory = (event: StorageEvent) => {
+      if (event.storageArea !== localStorage || (event.key !== HISTORY_KEY && event.key !== null))
+        return;
+      const next = parseHistory(event.key === null ? null : event.newValue);
+      historyRef.current = next;
+      setPlayHistory(next);
+      if (modeRef.current === 'single') setStats(soloStats(next));
+    };
+    window.addEventListener('storage', syncHistory);
     const cleanupPwa = registerPwa();
     return () => {
+      window.removeEventListener('storage', syncHistory);
       cleanupPwa();
       generation.current++;
       connectionAttempt.current++;
@@ -569,7 +616,8 @@ export function MatgoApp() {
     const nextRound = previous ? round + 1 : 1;
     roundRef.current = nextRound;
     setRound(nextRound);
-    if (!previous) setStats(emptyStats);
+    soloRoundId.current = crypto.randomUUID();
+    if (!previous) setStats(soloStats(historyRef.current));
     const game = createGame(
       debug
         ? {
@@ -621,7 +669,8 @@ export function MatgoApp() {
       logical.current = game;
       setRound(1);
       roundRef.current = 1;
-      setStats(emptyStats);
+      soloRoundId.current = crypto.randomUUID();
+      setStats(soloStats(historyRef.current));
       setLog([]);
       publish(projectState(game, 0));
       setScreen('game');
@@ -631,19 +680,19 @@ export function MatgoApp() {
       setError(e instanceof Error ? e.message : '분배 정보를 확인해주세요.');
     }
   };
-  const recordResult = (game: GameState) => {
-    const r = game.result!;
-    setStats((old) => {
-      const next: Stats = { wins: [...old.wins], points: [...old.points] };
-      if (r.winner !== null) {
-        next.wins[r.winner]++;
-        next.points[r.winner] += r.points;
-      }
-      next.points[0] += r.sidePoints[0];
-      next.points[1] += r.sidePoints[1];
-      return next;
-    });
-  };
+  const recordResult = useCallback(
+    (game: GameState) => {
+      if (game.result)
+        saveResult({
+          id: soloRoundId.current,
+          mode: 'single',
+          opponent: '토끼',
+          me: 0,
+          result: game.result,
+        });
+    },
+    [saveResult],
+  );
   const dispatch = useCallback(
     (action: GameAction) => {
       if (busyRef.current) return;
@@ -684,7 +733,7 @@ export function MatgoApp() {
         setError(e instanceof Error ? e.message : '패를 다시 선택해주세요.');
       }
     },
-    [present],
+    [present, recordResult],
   );
   useEffect(() => {
     if (
@@ -835,6 +884,20 @@ export function MatgoApp() {
               : `${opponent}가 패를 고르고 있어요`;
   return (
     <main className={`app ${screen === 'game' ? 'playing' : ''}`}>
+      {showHistory && (
+        <PlayHistory
+          history={playHistory}
+          onClose={() => setShowHistory(false)}
+          onReset={() => {
+            const stored = getItem(HISTORY_KEY);
+            const next = resetSolo(stored === null ? historyRef.current : parseHistory(stored));
+            historyRef.current = next;
+            setPlayHistory(next);
+            storeItem(HISTORY_KEY, JSON.stringify(next));
+            if (mode === 'single') setStats(soloStats(next));
+          }}
+        />
+      )}
       {screen === 'home' && (
         <section className="home">
           <header className="home-header">
@@ -896,6 +959,16 @@ export function MatgoApp() {
             >
               <span>
                 친구와 치기<small>방 코드로 함께하는 맞고</small>
+              </span>
+              <span aria-hidden>↗</span>
+            </button>
+            <button
+              className="secondary history-menu"
+              aria-label="최근 기록"
+              onClick={() => setShowHistory(true)}
+            >
+              <span>
+                최근 기록<small>지난 판과 혼자 치기 누적 기록</small>
               </span>
               <span aria-hidden>↗</span>
             </button>
@@ -1518,7 +1591,8 @@ export function MatgoApp() {
             즉시 점수 · 나 {view.result.sidePoints[me]} / {opponent}{' '}
             {view.result.sidePoints[1 - me]}
             <br />
-            이번 모임 · {stats.wins[me]}승 {stats.wins[1 - me]}패 · 누적 {stats.points[me]}점
+            {mode === 'single' ? '혼자 치기 누적' : '이번 모임'} · {stats.wins[me]}승{' '}
+            {stats.wins[1 - me]}패 · 누적 {stats.points[me]}점
           </p>
           <button
             className="primary"
