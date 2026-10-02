@@ -81,7 +81,9 @@ export class FirebaseTransport implements MultiplayerTransport {
     if (!code) {
       let owned: string[] = [];
       try {
-        owned = JSON.parse(localStorage.getItem('toki.firebase.owned.v1') ?? '[]');
+        const stored: unknown = JSON.parse(localStorage.getItem('toki.firebase.owned.v1') ?? '[]');
+        if (Array.isArray(stored))
+          owned = stored.filter((code): code is string => typeof code === 'string');
       } catch {}
       const removed = new Set<string>();
       for (const oldCode of owned) {

@@ -728,6 +728,7 @@ export function MatgoApp() {
         if (!current) return;
         busyRef.current = true;
         setBusy(true);
+        const epoch = generation.current;
         void multiplayer.current
           .action({
             round: roundRef.current,
@@ -736,6 +737,7 @@ export function MatgoApp() {
             action,
           })
           .catch((error) => {
+            if (epoch !== generation.current) return;
             busyRef.current = false;
             setBusy(false);
             setError(error instanceof Error ? error.message : '패를 다시 선택해주세요.');
@@ -761,6 +763,7 @@ export function MatgoApp() {
       busy ||
       dealerNotice ||
       kukjinMenu ||
+      debugPanel ||
       !view ||
       view.currentPlayer !== 1 ||
       view.phase === 'FINISHED' ||
@@ -781,6 +784,7 @@ export function MatgoApp() {
     screen,
     dealerNotice,
     kukjinMenu,
+    debugPanel,
     busy,
     view,
     prefs.difficulty,
@@ -866,12 +870,15 @@ export function MatgoApp() {
   };
   const nextRound = () => {
     if (mode === 'single') startSingle(logical.current);
-    else if (view && multiplayer.current)
+    else if (view && multiplayer.current) {
+      const epoch = generation.current;
       void multiplayer.current
         .nextRound(roundRef.current, view.stateVersion, seq.current + 1)
-        .catch((error) =>
-          setError(error instanceof Error ? error.message : '다음 판을 기다려주세요.'),
-        );
+        .catch((error) => {
+          if (epoch === generation.current)
+            setError(error instanceof Error ? error.message : '다음 판을 기다려주세요.');
+        });
+    }
   };
   const interrupted =
     mode === 'multi' && !!room && !room.closed && (!connected || !room.connected[1 - me]);
@@ -1394,8 +1401,11 @@ export function MatgoApp() {
         </section>
       )}
       {view &&
-        !busy &&
-        view.currentPlayer === me &&
+        canPlay &&
+        !zoom &&
+        !settings &&
+        !rules &&
+        !exit &&
         (view.phase === 'SELECT_KUKJIN' || kukjinMenu) && (
           <Modal
             title="국화를 쌍피로 사용할까요?"
