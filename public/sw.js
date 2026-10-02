@@ -1,4 +1,4 @@
-const CACHE = 'toki-v7-ink-rabbit';
+const CACHE = 'toki-v8-bonus-no-label';
 const CARDS = Array.from({ length: 12 }, (_, m) =>
   Array.from({ length: 4 }, (_, v) => `/cards/m${m + 1}-${v}.webp`),
 ).flat();
