@@ -7,6 +7,8 @@ import { cardFlight, type FlightGeometry } from '../lib/card-motion';
 import { syncFloorLayout, FLOOR_PLACES, type FloorLayout } from '../lib/floor-layout';
 import { useAppBack } from '../lib/use-app-back';
 import { Card } from './Card';
+import { GoStopDecision } from './GoStopDecision';
+import { withParticle } from '../lib/korean';
 import { RabbitMark } from './RabbitMark';
 import { Modal } from './Modal';
 import { Settings } from './Settings';
@@ -908,14 +910,18 @@ export function MatgoApp() {
           : view?.phase === 'SELECT_KUKJIN'
             ? view.currentPlayer === me
               ? '국화 열끗 · 쌍피를 선택해주세요'
-              : `${opponent}의 국화 선택을 기다려요`
+              : `${withParticle(opponent, '의')} 국화 선택을 기다려요`
             : view?.phase === 'SELECT_FLOOR'
               ? view.currentPlayer === me
                 ? '먹을 바닥패를 골라주세요'
-                : `${opponent}의 선택을 기다려요`
-              : view?.currentPlayer === me
-                ? '내 차례 · 손패를 톡 눌러주세요'
-                : `${opponent}가 패를 고르고 있어요`;
+                : `${withParticle(opponent, '의')} 선택을 기다려요`
+              : view?.phase === 'GO_STOP'
+                ? view.currentPlayer === me
+                  ? '판을 살펴보고 고 또는 스톱을 골라주세요'
+                  : `${withParticle(opponent, '의')} 고·스톱 선택을 기다려요`
+                : view?.currentPlayer === me
+                  ? '내 차례 · 손패를 톡 눌러주세요'
+                  : `${withParticle(opponent, '이/가')} 패를 고르고 있어요`;
   return (
     <main className={`app ${screen === 'game' ? 'playing' : ''}`}>
       {showHistory && (
@@ -1118,23 +1124,34 @@ export function MatgoApp() {
             <button className="icon-button" aria-label="나가기" onClick={() => setExit(true)}>
               ←
             </button>
-            <span className="table-logo">
-              토끼<span>맞고</span>
-              <RabbitMark />
-            </span>
-            <span className="round">{round}번째 판</span>
-            {mode === 'multi' && (
-              <button
-                className="icon-button"
-                aria-label="친구 초대"
-                onClick={() => setInvite(true)}
-              >
-                ↗
-              </button>
+            {view.phase === 'GO_STOP' && canPlay ? (
+              <GoStopDecision
+                score={view.scores[me]}
+                goCount={view.players[me].goCount}
+                onGo={() => dispatch({ type: 'GO', player: me })}
+                onStop={() => dispatch({ type: 'STOP', player: me })}
+              />
+            ) : (
+              <>
+                <span className="table-logo">
+                  토끼<span>맞고</span>
+                  <RabbitMark />
+                </span>
+                <span className="round">{round}번째 판</span>
+                {mode === 'multi' && (
+                  <button
+                    className="icon-button"
+                    aria-label="친구 초대"
+                    onClick={() => setInvite(true)}
+                  >
+                    ↗
+                  </button>
+                )}
+                <button className="icon-button" aria-label="설정" onClick={() => setSettings(true)}>
+                  <SettingsIcon />
+                </button>
+              </>
             )}
-            <button className="icon-button" aria-label="설정" onClick={() => setSettings(true)}>
-              <SettingsIcon />
-            </button>
           </header>
           <PlayerInfo
             name={opponent}
@@ -1162,7 +1179,9 @@ export function MatgoApp() {
             {interrupted && disconnectedSince && (
               <div className="connection-banner" role="status">
                 <strong>
-                  {!connected ? '내 연결이 잠시 끊겼어요' : `${opponent}의 재접속을 기다려요`}
+                  {!connected
+                    ? '내 연결이 잠시 끊겼어요'
+                    : `${withParticle(opponent, '의')} 재접속을 기다려요`}
                 </strong>
                 <span>
                   진행 중인 판을 보관했어요. 같은 기기로 돌아오면 이어서 칠 수 있어요. ·{' '}
@@ -1611,31 +1630,6 @@ export function MatgoApp() {
           </div>
         </Modal>
       )}
-      {view?.phase === 'GO_STOP' && canPlay && !zoom && !settings && (
-        <Modal title="여기서 멈출까요?" onClose={() => {}} className="decision-modal">
-          <span className="eyebrow">지금 선택할 수 있어요</span>
-          <div className="decision-score">
-            {view.scores[me].baseScore}
-            <span>점</span>
-          </div>
-          <p>
-            {view.players[me].goCount}고 · 현재 {view.scores[me].finalScore}점으로 정산
-          </p>
-          <div className="risk-badges">
-            {view.scores[me].pibakMultiplier > 1 && <span>피박 ×2</span>}
-            {view.scores[me].gwangbakMultiplier > 1 && <span>광박 ×2</span>}
-            {view.scores[me].meongttaMultiplier > 1 && <span>멍따 ×2</span>}
-          </div>
-          <div className="decision-actions">
-            <button className="secondary" onClick={() => dispatch({ type: 'GO', player: me })}>
-              고<small>조금 더 이어가요</small>
-            </button>
-            <button className="primary" onClick={() => dispatch({ type: 'STOP', player: me })}>
-              스톱<small>이번 판을 마쳐요</small>
-            </button>
-          </div>
-        </Modal>
-      )}
       {view?.result && !busy && !zoom && !settings && screen === 'game' && (
         <Modal
           title={
@@ -1643,7 +1637,7 @@ export function MatgoApp() {
               ? '다음 판을 기약해요'
               : view.result.winner === me
                 ? '기분 좋은 한 판!'
-                : `${opponent}의 멋진 한 판`
+                : `${withParticle(opponent, '의')} 멋진 한 판`
           }
           onClose={() => {}}
           className="result-modal"

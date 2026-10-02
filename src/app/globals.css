@@ -1540,3 +1540,53 @@ strong {
   background: #19372eee;
   border-radius: 7px;
 }
+
+.go-stop-decision {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+.go-stop-summary {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.go-stop-summary strong {
+  font-size: 15px;
+  color: #ffe39b;
+}
+.go-stop-summary span {
+  font-size: 11px;
+}
+.go-stop-summary small {
+  font-size: 9px;
+  color: #ffe39b;
+}
+.go-stop-decision button {
+  width: 64px;
+  flex: 0 0 64px;
+  min-width: 57px;
+  min-height: 44px;
+  padding: 5px 12px;
+  font-size: 17px;
+  font-weight: 800;
+}
+.go-stop-decision .secondary {
+  border: 1px solid #eed18b;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

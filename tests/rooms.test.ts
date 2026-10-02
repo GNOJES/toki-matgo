@@ -50,13 +50,14 @@ it('duplicate action idempotency / stale version / ownership validation', () => 
 });
 it('disconnect pauses without loss, retained session restored, forged token rejected', () => {
   const { svc, room, b } = pair();
+  const winsBefore = [...room.stats.wins];
   svc.disconnect(room, 1, 'b');
   expect(svc.snapshot(room, 0).canAct).toBe(false);
   expect(svc.snapshot(room, 0).connected).toEqual([true, false]);
   expect(() => svc.join(room.code, 'hack', 'x', 'x'.repeat(64))).toThrow();
   svc.join(room.code, 'ignored', 'b2', b.token);
   expect(room.sessions[1]!.nickname).toBe('친구');
-  expect(room.stats.wins).toEqual([0, 0]);
+  expect(room.stats.wins).toEqual(winsBefore);
 });
 it('completed room starts another round only when both consent', () => {
   const { svc, room } = pair();

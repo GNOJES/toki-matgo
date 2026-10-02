@@ -195,13 +195,13 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
     );
   await pa.goto('/');
   await pa.getByRole('button', { name: /친구와 치기/ }).click();
-  await pa.getByLabel('내 이름 · 두 경우 모두 이 이름으로 참여해요').fill('가족 A');
+  await pa.getByLabel('내 이름 · 두 경우 모두 이 이름으로 참여해요').fill('지훈');
   await pa.getByRole('button', { name: /방 만들기/ }).click();
   await expect(pa.getByTestId('room-code')).toBeVisible({ timeout: 15000 });
   const code = await pa.getByTestId('room-code').innerText();
   expect(code).toMatch(/^[0-9]{4}$/);
   await pb.goto(`/?room=${code}`);
-  await pb.getByLabel('내 이름 · 두 경우 모두 이 이름으로 참여해요').fill('친구 B');
+  await pb.getByLabel('내 이름 · 두 경우 모두 이 이름으로 참여해요').fill('민수');
   await pb.getByRole('button', { name: /내 이름으로 참여/ }).click();
   await game(pa);
   await game(pb);
@@ -224,6 +224,10 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
     );
   };
   await match();
+  const dealer = await pa.getByTestId('game-table').getAttribute('data-current');
+  await expect((dealer === '0' ? pb : pa).locator('.turn-message')).toContainText(
+    dealer === '0' ? '지훈이 패를 고르고 있어요' : '민수가 패를 고르고 있어요',
+  );
   // Full authoritative state is intentionally readable by these two trusted friends.
   await expect.poll(() => messages[0].length > 0 && messages[1].length > 0).toBe(true);
   const initial = messages.map((list) => (list as any[]).find((x) => x.game));
@@ -243,7 +247,7 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
   await expect(pa.locator('.turn-message')).toContainText('친구의 연결을 기다리고 있어요.', {
     timeout: 25000,
   });
-  await expect(pa.locator('.connection-banner')).toContainText('친구 B의 재접속을 기다려요');
+  await expect(pa.locator('.connection-banner')).toContainText('민수의 재접속을 기다려요');
   await expect(pa.getByTestId('game-table')).toHaveAttribute('data-can-act', 'false');
   await b.setOffline(false);
   await pb.reload();
