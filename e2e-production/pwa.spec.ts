@@ -15,7 +15,7 @@ test('production caches first load, reloads offline, plays single and hides debu
       page.evaluate(async () => {
         const reg = await navigator.serviceWorker.getRegistration();
         if (!reg?.active) return false;
-        const cache = await caches.open('toki-v6-felt-back');
+        const cache = await caches.open('toki-v7-ink-rabbit');
         const keys = await cache.keys();
         return (
           keys.filter((r) => r.url.includes('/_next/static/')).length >= 3 &&
