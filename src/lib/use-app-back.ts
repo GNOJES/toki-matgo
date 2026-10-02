@@ -36,10 +36,44 @@ export function useAppBack(onBack: () => void) {
         foremost.dispatchEvent(new Event('cancel', { cancelable: true }));
       } else callback.current();
     };
+    // Native Android Back is a close request before it becomes history navigation.
+    // Let modal dialogs own that request; watch the game itself when no dialog is open.
+    type Watcher = EventTarget & { destroy: () => void };
+    const NativeWatcher = (window as unknown as { CloseWatcher?: new () => Watcher }).CloseWatcher;
+    let watcher: Watcher | undefined;
+    let disposed = false;
+    const armNative = () => {
+      if (!NativeWatcher || disposed) return;
+      if (document.querySelector('.app dialog[open]')) {
+        watcher?.destroy();
+        watcher = undefined;
+        return;
+      }
+      if (watcher) return;
+      watcher = new NativeWatcher();
+      watcher.addEventListener('close', () => {
+        watcher = undefined;
+        callback.current();
+        queueMicrotask(armNative);
+      });
+    };
+    const observer = new MutationObserver(armNative);
+    observer.observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['open'],
+      childList: true,
+    });
+    armNative();
+    window.addEventListener('pointerdown', armNative, true);
     window.addEventListener('popstate', back);
     window.addEventListener('pointerdown', armFromGesture, { once: true, capture: true });
     window.addEventListener('keydown', armFromGesture, { once: true, capture: true });
     return () => {
+      disposed = true;
+      observer.disconnect();
+      watcher?.destroy();
+      window.removeEventListener('pointerdown', armNative, true);
       window.removeEventListener('popstate', back);
       window.removeEventListener('pointerdown', armFromGesture, true);
       window.removeEventListener('keydown', armFromGesture, true);

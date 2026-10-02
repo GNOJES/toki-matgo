@@ -11,10 +11,24 @@ export function Modal({
   className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
   useEffect(() => {
     const el = ref.current;
+    const nativeClose = () => {
+      // A queued close from React Strict Mode cleanup can arrive after re-opening.
+      if (el?.open) return;
+      close.current();
+      // Required choices have a no-op close callback; re-open if the native
+      // close request could not be canceled because Chrome had no activation.
+      queueMicrotask(() => {
+        if (el?.isConnected && !el.open) el.showModal();
+      });
+    };
+    el?.addEventListener('close', nativeClose);
     el?.showModal();
     return () => {
+      el?.removeEventListener('close', nativeClose);
       el?.close();
     };
   }, []);

@@ -35,14 +35,14 @@ test('mobile back closes nested menus, confirms game exit and keeps the home pag
   await expect(page.locator('dialog[open]')).toHaveCount(0);
   await expect(game).toHaveAttribute('data-version', version!);
   await page.goBack();
-  const exit = page.getByRole('dialog', { name: '화투판을 나갈까요?' });
+  const exit = page.getByRole('dialog', { name: '대기실로 돌아갈까요?' });
   await expect(exit).toBeVisible();
   await page.goBack();
   await expect(exit).toHaveCount(0);
   await expect(game).toBeVisible();
   await page.goBack();
   await expect(exit).toBeVisible();
-  await exit.getByRole('button', { name: '나가기', exact: true }).click();
+  await exit.getByRole('button', { name: '대기실로', exact: true }).click();
   const homeUrl = page.url();
   for (let i = 0; i < 3; i++) {
     await page.goBack();
@@ -57,7 +57,7 @@ test('mobile back closes nested menus, confirms game exit and keeps the home pag
   await expect(page.getByRole('link', { name: '토끼맞고 홈' })).toBeVisible();
 });
 
-test('mobile floor pairs and triples show complete faces, enlarge and preserve required choices on back', async ({
+test('mobile floor pairs and triples overlap a third of each face, enlarge and preserve required choices on back', async ({
   page,
 }) => {
   await page.goto('/?debug=1');
@@ -71,8 +71,11 @@ test('mobile floor pairs and triples show complete faces, enlarge and preserve r
       .locator('.floor-card')
       .evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().toJSON()));
     expect(boxes.length).toBe(fixture === '자뻑' ? 3 : 2);
-    for (let i = 1; i < boxes.length; i++)
-      expect(boxes[i].left).toBeGreaterThanOrEqual(boxes[i - 1].right);
+    for (let i = 1; i < boxes.length; i++) {
+      const visible = (boxes[i].left - boxes[i - 1].left) / boxes[i - 1].width;
+      expect(visible).toBeGreaterThan(0.63);
+      expect(visible).toBeLessThan(0.7);
+    }
     await group.locator('.floor-card').first().click();
     const zoom = page.getByRole('dialog', { name: '바닥패 크게 보기' });
     await expect(zoom).toBeVisible();

@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { flushSync } from 'react-dom';
 import { io, type Socket } from 'socket.io-client';
 import QRCode from 'qrcode';
 import { cardFlight, type FlightGeometry } from '../lib/card-motion';
@@ -94,7 +95,15 @@ export function MatgoApp() {
     kind: string;
     other: boolean;
     geometry: FlightGeometry;
+    duration: number;
   } | null>(null);
+  const waitingFlight = useRef<
+    Partial<
+      Record<'hand' | 'deck', { cards: HwatuCard[]; geometry: FlightGeometry; mine: boolean }>
+    >
+  >({});
+  const [struck, setStruck] = useState<Record<string, { card: HwatuCard; angle: number }>>({});
+  const [landing, setLanding] = useState<string | null>(null);
   const [selected, setSelected] = useState<HwatuCard | null>(null);
   const [zoom, setZoom] = useState<{ cards: HwatuCard[]; title: string } | null>(null);
   const [settings, setSettings] = useState(false);
@@ -164,44 +173,129 @@ export function MatgoApp() {
             setHighlight(e.cards?.map((c) => c.id) ?? []);
             const mine = e.player === meRef.current;
             const ids = new Set(e.cards?.map((c) => c.id));
-            if (e.type === 'CARD_PLAYED' || e.type === 'BOMB') {
-              feedback(prefsRef.current);
+            const fly = async (
+              cards: HwatuCard[],
+              source: FlightGeometry,
+              targetId?: string,
+              deck = false,
+            ) => {
+              if (!cards.length) return true;
+              const c = cards[0];
+              // Reserve a real empty slot before measuring its final layout.
+              if (!targetId && !shown.floor.some((f) => f.id === c.id)) {
+                shown.floor.push(c);
+                flushSync(() => {
+                  setLanding(c.id);
+                  publish({ ...shown });
+                });
+                targetId = c.id;
+              }
+              const geometry = cardFlight(cards, deck ? 'flip' : 'play', mine, targetId);
+              // Keep the original source even when the hand/deck changed during a choice.
+              const centerX = source.fromX + source.width / 2;
+              const centerY = source.fromY + source.height / 2;
+              geometry.fromX = centerX - geometry.width / 2;
+              geometry.fromY = centerY - geometry.height / 2;
+              const angle = (motionKey % 9) - 4 || 3;
               setMotion({
                 key: motionKey++,
-                cards: e.cards ?? [],
-                kind: 'play',
+                cards,
+                kind: targetId === c.id ? 'place' : 'play',
                 other: !mine,
-                geometry: cardFlight(e.cards ?? [], 'play', mine),
+                geometry,
+                duration: 440 * factor,
               });
+              if (!(await pause(320))) return false;
+              feedback(prefsRef.current);
+              if (!(await pause(120))) return false;
+              if (targetId !== c.id && targetId)
+                setStruck((old) => ({ ...old, [targetId!]: { card: c, angle } }));
+              publish({ ...shown });
+              setLanding(null);
+              setMotion(null);
+              return pause(140);
+            };
+            if (e.type === 'CARD_PLAYED' || e.type === 'BOMB') {
+              const cards = e.cards ?? [];
+              const source = cardFlight(cards, 'play', mine);
+              const choice = events.some(
+                (event) => event.type === 'FLOOR_MATCH_REQUIRED' && event.stage === 'hand',
+              );
+              const match = events.find(
+                (event) => event.type === 'FLOOR_MATCHED' && event.stage === 'hand',
+              );
               if (mine) shown.hand = shown.hand.filter((c) => !ids.has(c.id));
-              else if (!e.cards?.[0]?.isBonus)
+              else
                 shown.players[e.player].handCount = Math.max(
                   0,
-                  shown.players[e.player].handCount - (e.cards?.length ?? 1),
+                  shown.players[e.player].handCount - cards.length,
                 );
               publish({ ...shown });
-              if (!(await pause(400))) return;
-              if (e.type === 'CARD_PLAYED' && !e.cards?.[0]?.isBonus)
-                shown.floor.push(...(e.cards ?? []));
-              publish({ ...shown });
-              setMotion(null);
-              if (!(await pause(350))) return;
+              if (choice) {
+                waitingFlight.current.hand = { cards, geometry: source, mine };
+                setMotion({
+                  key: motionKey++,
+                  cards,
+                  kind: 'waiting',
+                  other: !mine,
+                  geometry: source,
+                  duration: 0,
+                });
+              } else if (
+                !(await fly(
+                  cards,
+                  source,
+                  match?.cards?.[1]?.id ??
+                    (e.type === 'BOMB'
+                      ? shown.floor.find((c) => c.month === cards[0]?.month)?.id
+                      : undefined),
+                ))
+              )
+                return;
             } else if (e.type === 'DECK_CARD_REVEALED') {
+              const cards = e.cards ?? [];
+              const source = cardFlight(cards, 'flip', mine);
               shown.deckCount = Math.max(0, shown.deckCount - 1);
               publish({ ...shown });
-              feedback(prefsRef.current);
               setMotion({
                 key: motionKey++,
-                cards: e.cards ?? [],
+                cards,
                 kind: 'flip',
                 other: !mine,
-                geometry: cardFlight(e.cards ?? [], 'flip', mine),
+                geometry: source,
+                duration: 420 * factor,
               });
-              if (!(await pause(400))) return;
-              if (!(await pause(650))) return;
-              shown.floor.push(...(e.cards ?? []));
-              publish({ ...shown });
-              setMotion(null);
+              if (!(await pause(420))) return;
+              if (!(await pause(180))) return;
+              const choice = events.some(
+                (event) => event.type === 'FLOOR_MATCH_REQUIRED' && event.stage === 'deck',
+              );
+              const match = events.find(
+                (event) =>
+                  event.type === 'FLOOR_MATCHED' &&
+                  event.stage === 'deck' &&
+                  event.cards?.[0]?.id === cards[0]?.id,
+              );
+              if (choice) {
+                waitingFlight.current.deck = { cards, geometry: source, mine };
+                setMotion({
+                  key: motionKey++,
+                  cards,
+                  kind: 'waiting',
+                  other: !mine,
+                  geometry: source,
+                  duration: 0,
+                });
+              } else if (
+                !(await fly(
+                  cards,
+                  source,
+                  match?.cards?.[1]?.id ??
+                    shown.floor.find((c) => c.month === cards[0]?.month && !c.isBonus)?.id,
+                  true,
+                ))
+              )
+                return;
             } else if (
               e.type === 'CARDS_CAPTURED' ||
               e.type === 'PI_TRANSFERRED' ||
@@ -213,9 +307,17 @@ export function MatgoApp() {
                 kind: 'capture',
                 other: !mine,
                 geometry: cardFlight(e.cards ?? [], 'capture', mine),
+                duration: 450 * factor,
               });
               feedback(prefsRef.current);
               if (!(await pause(450))) return;
+              setStruck((old) =>
+                Object.fromEntries(
+                  Object.entries(old).filter(
+                    ([target, hit]) => !ids.has(target) && !ids.has(hit.card.id),
+                  ),
+                ),
+              );
               shown.floor = shown.floor.filter((c) => !ids.has(c.id));
               shown.players[1 - e.player].captured = shown.players[1 - e.player].captured.filter(
                 (c) => !ids.has(c.id),
@@ -226,7 +328,15 @@ export function MatgoApp() {
               publish({ ...shown });
               setMotion(null);
             } else if (e.type === 'FLOOR_MATCHED') {
-              if (!(await pause(400))) return;
+              const stage = e.stage ?? 'hand';
+              const waiting = waitingFlight.current[stage];
+              if (waiting && waiting.cards[0]?.id === e.cards?.[0]?.id) {
+                delete waitingFlight.current[stage];
+                if (
+                  !(await fly(waiting.cards, waiting.geometry, e.cards?.[1]?.id, stage === 'deck'))
+                )
+                  return;
+              }
             } else if (e.type === 'SCORE_CHANGED') {
               shown.scores[e.player] = next.scores[e.player];
               publish({ ...shown });
@@ -238,7 +348,12 @@ export function MatgoApp() {
           }
           if (epoch !== generation.current) return;
           publish(next);
-          setMotion(null);
+          if (next.phase !== 'SELECT_FLOOR') {
+            setMotion(null);
+            setStruck({});
+            waitingFlight.current = {};
+          }
+          setLanding(null);
           setHighlight([]);
           setStatus('');
           busyRef.current = false;
@@ -250,6 +365,10 @@ export function MatgoApp() {
             publish(next);
             setBusy(false);
             busyRef.current = false;
+            setMotion(null);
+            setStruck({});
+            setLanding(null);
+            waitingFlight.current = {};
             setError('패 이동을 복구했어요. 계속 칠 수 있어요.');
           }
         });
@@ -318,6 +437,10 @@ export function MatgoApp() {
             queue.current = Promise.resolve();
             busyRef.current = false;
             setBusy(false);
+            setMotion(null);
+            setStruck({});
+            setLanding(null);
+            waitingFlight.current = {};
             publish(data.game);
           }
           present(data.game, data.events, newRound);
@@ -382,6 +505,11 @@ export function MatgoApp() {
     busyRef.current = false;
     setBusy(false);
     setMotion(null);
+    setStruck({});
+    setHighlight([]);
+    setStatus('');
+    setLanding(null);
+    waitingFlight.current = {};
     setRoom(null);
     setError('');
     setLog([]);
@@ -427,6 +555,11 @@ export function MatgoApp() {
       busyRef.current = false;
       setBusy(false);
       setMotion(null);
+      setStruck({});
+      setHighlight([]);
+      setStatus('');
+      setLanding(null);
+      waitingFlight.current = {};
       setRoom(null);
       setMode('single');
       modeRef.current = 'single';
@@ -546,6 +679,11 @@ export function MatgoApp() {
     busyRef.current = false;
     setBusy(false);
     setMotion(null);
+    setStruck({});
+    setHighlight([]);
+    setStatus('');
+    setLanding(null);
+    waitingFlight.current = {};
     socket.current?.emit('room:leave');
     socket.current?.disconnect();
     socket.current = null;
@@ -841,12 +979,27 @@ export function MatgoApp() {
               {Array.from(new Set(view.floor.map((c) => (c.isBonus ? 0 : c.month))))
                 .sort((a, b) => a - b)
                 .map((month) => (
-                  <div className="floor-month" key={month} data-floor-month={month}>
+                  <div
+                    className="floor-month"
+                    key={month}
+                    data-floor-month={month}
+                    style={
+                      {
+                        '--pile-count': view.floor.filter((c) => c.month === month).length,
+                      } as CSSProperties
+                    }
+                  >
                     {view.floor
                       .filter((c) => c.month === month)
-                      .map((c) => (
+                      .map((c, i) => (
                         <button
                           key={c.id}
+                          style={
+                            {
+                              '--pile-index': i,
+                              visibility: landing === c.id ? 'hidden' : undefined,
+                            } as CSSProperties
+                          }
                           data-floor-card-id={c.id}
                           className={`floor-card ${view.options.includes(c.id) || highlight.includes(c.id) || selected?.month === c.month ? 'highlighted' : ''}`}
                           onClick={() => {
@@ -865,21 +1018,27 @@ export function MatgoApp() {
                           aria-label={`${c.name}${canPlay && view.phase === 'SELECT_FLOOR' && view.options.includes(c.id) ? ' 먹기' : ' 바닥패 확대'}`}
                         >
                           <Card card={c} />
+                          {struck[c.id] && (
+                            <span
+                              className="landed-card"
+                              data-floor-card-id={struck[c.id].card.id}
+                              style={{
+                                transform: `translate(2px, 1px) rotate(${struck[c.id].angle}deg)`,
+                              }}
+                            >
+                              <Card card={struck[c.id].card} />
+                            </span>
+                          )}
                         </button>
                       ))}
                   </div>
                 ))}
             </div>
-            {view.turnCards.length > 0 && !busy && (
-              <div className="pending-cards">
-                {view.turnCards.slice(0, 3).map((c) => (
-                  <Card key={c.id} card={c} />
-                ))}
-              </div>
-            )}
             {motion && (
               <div
                 key={motion.key}
+                data-target-card-id={motion.geometry.targetId}
+                data-moving-card-id={motion.cards[0]?.id}
                 className={`card-motion ${motion.kind} ${motion.other ? 'other' : ''}`}
                 style={
                   {
@@ -887,13 +1046,27 @@ export function MatgoApp() {
                     '--from-y': `${motion.geometry.fromY}px`,
                     '--to-x': `${motion.geometry.toX}px`,
                     '--to-y': `${motion.geometry.toY}px`,
-                    '--duration': `${prefs.speed === 'physical' ? 400 : prefs.speed === 'normal' ? 260 : 140}ms`,
+                    '--duration': `${motion.duration}ms`,
+                    '--motion-width': `${motion.geometry.width}px`,
+                    '--motion-height': `${motion.geometry.height}px`,
+                    '--land-angle': `${(motion.key % 9) - 4 || 3}deg`,
                   } as CSSProperties
                 }
               >
                 {motion.cards.slice(0, 4).map((c, i) => (
                   <span key={c.id} style={{ '--i': i } as CSSProperties}>
-                    <Card card={c} />
+                    {motion.kind === 'flip' ? (
+                      <span className="flip-face">
+                        <span className="flip-back">
+                          <Card back />
+                        </span>
+                        <span className="flip-front">
+                          <Card card={c} />
+                        </span>
+                      </span>
+                    ) : (
+                      <Card card={c} />
+                    )}
                   </span>
                 ))}
               </div>
@@ -948,9 +1121,6 @@ export function MatgoApp() {
                     onContextMenu={(e) => e.preventDefault()}
                   >
                     <Card card={c} />
-                    {view.floor.some((f) => f.month === c.month && !c.isBonus) && (
-                      <i className="hand-match-dot" aria-hidden="true" />
-                    )}
                   </button>
                 ))}
             </div>
@@ -1204,7 +1374,7 @@ export function MatgoApp() {
             {mode === 'multi' && room?.nextReady[me] ? '친구의 준비를 기다려요' : '한 판 더'}
           </button>
           <button className="text-button" onClick={leave}>
-            나가기
+            대기실로
           </button>
         </Modal>
       )}
@@ -1214,7 +1384,7 @@ export function MatgoApp() {
         </Modal>
       )}
       {exit && (
-        <Modal title="화투판을 나갈까요?" onClose={() => setExit(false)}>
+        <Modal title="대기실로 돌아갈까요?" onClose={() => setExit(false)}>
           <p>
             {mode === 'multi'
               ? '친구에게 연결 대기 상태로 표시됩니다. 새로고침은 같은 판으로 돌아올 수 있어요.'
@@ -1224,7 +1394,7 @@ export function MatgoApp() {
             계속 치기
           </button>
           <button className="secondary" onClick={leave}>
-            나가기
+            대기실로
           </button>
         </Modal>
       )}
