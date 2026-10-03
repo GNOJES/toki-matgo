@@ -24,6 +24,8 @@ test('mobile computer dealer waits for start confirmation', async ({ page, conte
   await page.goto('/');
   await page.getByRole('button', { name: /혼자 치기/ }).click();
   await expect(page.getByRole('dialog', { name: '이번 판의 선' })).toContainText('토끼가 선이에요');
+  await expect(page.locator('.dealer-portrait svg.rabbit-mark')).toBeVisible();
+  await expect(page.locator('.dealer-portrait')).not.toContainText(/🐰|🐇/);
   await expect(page.getByTestId('game-table')).toHaveAttribute('data-current', '1');
   await page.waitForTimeout(1800); // Beyond the CPU's maximum thinking delay.
   await expect(page.getByTestId('game-table')).toHaveAttribute('data-version', '0');

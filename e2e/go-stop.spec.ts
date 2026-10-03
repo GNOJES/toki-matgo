@@ -5,6 +5,8 @@ test('mobile go stop decision preserves visible board and allows card inspection
 }) => {
   for (const [width, height] of [
     [360, 740],
+    [378, 672],
+    [390, 600],
     [390, 844],
     [412, 915],
   ]) {
@@ -23,6 +25,11 @@ test('mobile go stop decision preserves visible board and allows card inspection
     const header = await page.locator('.game-header').boundingBox();
     expect(summary!.width).toBeGreaterThanOrEqual(100);
     expect(summary!.height).toBeLessThanOrEqual(header!.height + 2);
+    for (const button of await decision.getByRole('button').all()) {
+      const bounds = await button.boundingBox();
+      expect(bounds!.y).toBeGreaterThanOrEqual(0);
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(header!.y + header!.height + 1);
+    }
     const boxes = await page
       .locator('.deck, .floor-card, .hand-card, .captured-group')
       .evaluateAll((els) =>

@@ -1553,7 +1553,9 @@ export function MatgoApp() {
           onClose={() => setDealerNotice(false)}
           className="dealer-notice"
         >
-          <div className="dealer-portrait">{view.dealer === 0 ? '🐰' : '🐇'}</div>
+          <div className="dealer-portrait">
+            <RabbitMark />
+          </div>
           <p>
             <strong>{view.dealer === 0 ? '내가 선이에요' : '토끼가 선이에요'}</strong>
           </p>
