@@ -135,7 +135,9 @@ export function MatgoApp() {
   >({});
   const [landing, setLanding] = useState<string | null>(null);
   const [selected, setSelected] = useState<HwatuCard | null>(null);
-  const [zoom, setZoom] = useState<{ cards: HwatuCard[]; title: string } | null>(null);
+  const [zoom, setZoom] = useState<{ cards: HwatuCard[]; title: string; captured: boolean } | null>(
+    null,
+  );
   const [settings, setSettings] = useState(false);
   const [rules, setRules] = useState(false);
   const [invite, setInvite] = useState(false);
@@ -831,6 +833,12 @@ export function MatgoApp() {
     history.replaceState({ ...history.state }, '', window.location.pathname);
   };
   useAppBack(() => {
+    // Android may close the native dialog before the history event reaches us.
+    // Keep the React inspection state as a fallback while that close commits.
+    if (zoom) {
+      setZoom(null);
+      return;
+    }
     setSelected(null);
     if (screen === 'friends') leave();
     else if (screen === 'game' || screen === 'lobby') setExit(true);
@@ -853,7 +861,8 @@ export function MatgoApp() {
     (mode === 'single' || (connected && !!room?.canAct));
   const ownName = mode === 'single' ? '나' : (room?.names[me] ?? (friendName.trim() || '나'));
   const opponent = mode === 'single' ? '토끼' : (room?.names[1 - me] ?? '친구');
-  const zoomCards = (cards: HwatuCard[], title: string) => setZoom({ cards, title });
+  const zoomCards = (cards: HwatuCard[], title: string, captured = false) =>
+    setZoom({ cards, title, captured });
   const tapCard = (c: HwatuCard) => {
     if (held.current) {
       held.current = false;
@@ -1151,7 +1160,8 @@ export function MatgoApp() {
             name={opponent}
             score={view.scores[1 - me].baseScore}
             go={view.players[1 - me].goCount}
-            active={view.currentPlayer !== me}
+            active={view.phase !== 'FINISHED' && view.currentPlayer !== me}
+            turnLabel="상대 차례"
             dealer={view.dealer !== me}
             wins={stats.wins[1 - me]}
             handCount={view.players[1 - me].handCount}
@@ -1159,6 +1169,7 @@ export function MatgoApp() {
           />
           <Captured
             player={view.players[1 - me]}
+            score={view.scores[1 - me]}
             onZoom={zoomCards}
             hiddenIds={motion?.kind === 'transfer' ? motion.cards.map((c) => c.id) : []}
           />
@@ -1338,12 +1349,14 @@ export function MatgoApp() {
             name={ownName}
             score={view.scores[me].baseScore}
             go={view.players[me].goCount}
-            active={view.currentPlayer === me}
+            active={view.phase !== 'FINISHED' && view.currentPlayer === me}
+            turnLabel="내 차례"
             dealer={view.dealer === me}
             wins={stats.wins[me]}
           />
           <Captured
             player={view.players[me]}
+            score={view.scores[me]}
             onZoom={zoomCards}
             hiddenIds={motion?.kind === 'transfer' ? motion.cards.map((c) => c.id) : []}
           />
@@ -1521,7 +1534,11 @@ export function MatgoApp() {
         </Modal>
       )}
       {zoom && (
-        <Modal title={zoom.title} onClose={() => setZoom(null)} className="zoom-modal">
+        <Modal
+          title={zoom.title}
+          onClose={() => setZoom(null)}
+          className={`zoom-modal${zoom.captured ? ' captured-zoom' : ''}`}
+        >
           <div className="zoom-grid">
             {zoom.cards.map((c) => (
               <div key={c.id}>
@@ -1670,10 +1687,39 @@ export function MatgoApp() {
           <p className="fine-print">
             즉시 점수 · 나 {view.result.sidePoints[me]} / {opponent}{' '}
             {view.result.sidePoints[1 - me]}
-            <br />
-            {mode === 'single' ? '혼자 치기 누적' : '이번 모임'} · {stats.wins[me]}승{' '}
-            {stats.wins[1 - me]}패 · 누적 {stats.points[me]}점
           </p>
+          <section
+            className="match-summary"
+            aria-label={mode === 'single' ? '혼자 치기 누적' : '이번 모임'}
+          >
+            <h3>{mode === 'single' ? '혼자 치기 누적' : '이번 모임'}</h3>
+            <div className="match-scores">
+              <div className="match-player">
+                <span title={ownName}>{ownName}</span>
+                <strong>
+                  {stats.points[me].toLocaleString()}
+                  <small>점</small>
+                </strong>
+                <span>{stats.wins[me]}승</span>
+              </div>
+              <span className="match-versus" aria-hidden="true">
+                :
+              </span>
+              <div className="match-player">
+                <span title={opponent}>{opponent}</span>
+                <strong>
+                  {stats.points[1 - me].toLocaleString()}
+                  <small>점</small>
+                </strong>
+                <span>{stats.wins[1 - me]}승</span>
+              </div>
+            </div>
+            <p>
+              {stats.points[me] === stats.points[1 - me]
+                ? '현재 동점이에요'
+                : `${Math.abs(stats.points[me] - stats.points[1 - me]).toLocaleString()}점 ${stats.points[me] > stats.points[1 - me] ? '앞서고' : '뒤지고'} 있어요`}
+            </p>
+          </section>
           <button
             className="primary"
             disabled={mode === 'multi' && !!room?.nextReady[me]}
@@ -1817,6 +1863,7 @@ function PlayerInfo({
   score,
   go,
   active,
+  turnLabel,
   dealer,
   wins,
   handCount,
@@ -1826,6 +1873,7 @@ function PlayerInfo({
   score: number;
   go: number;
   active: boolean;
+  turnLabel: string;
   dealer: boolean;
   wins: number;
   handCount?: number;
@@ -1834,8 +1882,10 @@ function PlayerInfo({
   return (
     <div className={`player-info ${active ? 'active' : ''}`}>
       <span className="player-name">
-        <span className="player-dot" />
-        {name}
+        {active && <small className="turn-badge">{turnLabel}</small>}
+        <span className="player-name-text" title={name}>
+          {name}
+        </span>
         {handCount !== undefined && (
           <small className="hand-count" data-testid="opponent-hand">
             {handCount}장{passes ? ` · 뒤집기 ${passes}회` : ''}

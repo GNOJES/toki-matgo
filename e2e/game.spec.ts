@@ -280,6 +280,16 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
       final.winner === null ? 'draw' : final.winner === i ? 'win' : 'loss',
     );
     expect(h.solo.wins + h.solo.losses + h.solo.draws).toBe(0);
+    const summary = p.getByRole('region', { name: '이번 모임', exact: true });
+    await expect(summary).toBeVisible();
+    const own = summary.locator('.match-player').first();
+    const opponent = summary.locator('.match-player').last();
+    await expect(own).toContainText(i === 0 ? '지훈' : '민수');
+    await expect(opponent).toContainText(i === 0 ? '민수' : '지훈');
+    const ownPoints = final.sidePoints[i] + (final.winner === i ? final.points : 0);
+    const otherPoints = final.sidePoints[1 - i] + (final.winner === 1 - i ? final.points : 0);
+    await expect(own.locator('strong')).toHaveText(`${ownPoints.toLocaleString()}점`);
+    await expect(opponent.locator('strong')).toHaveText(`${otherPoints.toLocaleString()}점`);
   }
 
   expect((messages[0] as any[]).filter((m) => m.game?.result).at(-1)?.game).toEqual(

@@ -19,7 +19,7 @@ test('mobile go stop decision preserves visible board and allows card inspection
     await page.getByRole('button', { name: /쌍피로 사용/ }).click();
     const popup = page.getByRole('dialog', { name: '고 / 스톱', exact: true });
     await expect(popup).toBeVisible();
-    await expect(popup.getByRole('button', { name: '고 조금 더 이어가요' })).toBeVisible();
+    await expect(popup.getByRole('button', { name: /^1고 선택/ })).toBeVisible();
     await expect(popup.getByRole('button', { name: '스톱 이번 판을 마쳐요' })).toBeVisible();
     const popupBounds = await popup.boundingBox();
     expect(popupBounds!.y).toBeGreaterThanOrEqual(0);
@@ -92,11 +92,12 @@ for (const inspectBeforeGo of [false, true]) {
       await expect(popup).toHaveCount(0);
       await expect(page.getByTestId('game-table')).toHaveAttribute('data-phase', 'GO_STOP');
     }
-    await page.getByRole('button', { name: '고 조금 더 이어가요' }).click();
+    await page.getByRole('button', { name: /^1고 선택/ }).click();
     await page.getByRole('button', { name: '보너스 쌍피 내기', exact: true }).click();
     await page.locator('[data-card-id="m1-1"]').click();
     await expect(popup).toBeVisible();
-    await expect(popup).toContainText('1고');
+    await expect(popup).toContainText('현재 1고');
+    await expect(popup.getByRole('button', { name: /^2고 선택/ })).toBeVisible();
     await popup.getByRole('button', { name: '스톱 이번 판을 마쳐요' }).click();
     await expect(page.getByTestId('game-table')).toHaveAttribute('data-phase', 'FINISHED');
   });

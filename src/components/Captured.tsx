@@ -1,25 +1,36 @@
 import { Card } from './Card';
 import { piValue } from '../game-engine/cards';
-import type { Card as HwatuCard, PlayerView } from '../game-engine/types';
+import type { Card as HwatuCard, PlayerView, ScoreResult } from '../game-engine/types';
 export function Captured({
   player,
+  score,
   onZoom,
   hiddenIds = [],
 }: {
   player: PlayerView;
-  onZoom: (cards: HwatuCard[], title: string) => void;
+  score: ScoreResult;
+  onZoom: (cards: HwatuCard[], title: string, captured?: boolean) => void;
   hiddenIds?: string[];
 }) {
   const groups = [
-    { name: '광', cards: player.captured.filter((c) => c.isGwang) },
+    { name: '광', points: score.gwangScore, cards: player.captured.filter((c) => c.isGwang) },
     {
       name: '열끗',
+      points: score.yeolScore + score.godoriScore,
       cards: player.captured.filter(
         (c) => c.isYeol && !(c.specialType === 'KUKJIN' && player.kukjinAsPi),
       ),
     },
-    { name: '띠', cards: player.captured.filter((c) => c.isTti) },
-    { name: '피', cards: player.captured.filter((c) => piValue(c, player.kukjinAsPi) > 0) },
+    {
+      name: '띠',
+      points: score.ribbonScore + score.hongdanScore + score.cheongdanScore + score.chodanScore,
+      cards: player.captured.filter((c) => c.isTti),
+    },
+    {
+      name: '피',
+      points: score.piScore,
+      cards: player.captured.filter((c) => piValue(c, player.kukjinAsPi) > 0),
+    },
   ];
   return (
     <div className="captured" data-testid="captured">
@@ -27,7 +38,7 @@ export function Captured({
         <button
           key={g.name}
           className="captured-group"
-          onClick={() => onZoom(g.cards, `먹은 ${g.name}`)}
+          onClick={() => onZoom(g.cards, `먹은 ${g.name} (현재 ${g.points}점)`, true)}
           aria-label={`먹은 ${g.name} ${g.cards.length}장 확대`}
         >
           <span className="group-title">

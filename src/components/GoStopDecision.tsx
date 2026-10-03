@@ -30,13 +30,17 @@ export function GoStopDecision({
     >
       <div className="go-stop-summary" title={multipliers}>
         <strong>
-          {score.baseScore}점 · {goCount}고
+          {score.baseScore}점 · 현재 {goCount}고
         </strong>
         <span>스톱하면 {score.finalScore}점</span>
         {multipliers && <small>{multipliers}</small>}
       </div>
-      <button className="secondary" aria-label="고 조금 더 이어가요" onClick={onGo}>
-        고<small className="sr-only">조금 더 이어가요</small>
+      <button
+        className="secondary"
+        aria-label={`${goCount + 1}고 선택 · 현재 ${goCount}고`}
+        onClick={onGo}
+      >
+        {goCount + 1}고
       </button>
       <button className="primary" aria-label="스톱 이번 판을 마쳐요" onClick={onStop}>
         스톱<small className="sr-only">이번 판을 마쳐요</small>
