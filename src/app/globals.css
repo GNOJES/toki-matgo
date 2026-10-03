@@ -376,7 +376,7 @@ strong {
   height: 100%;
   padding: env(safe-area-inset-top) 13px env(safe-area-inset-bottom);
   display: grid;
-  grid-template-rows: 48px 32px 65px minmax(260px, 1fr) 32px 65px 177px;
+  grid-template-rows: 48px 32px 65px minmax(0, 1fr) 24px 32px 65px 177px;
   background-image:
     repeating-linear-gradient(30deg, transparent, transparent 2px, #fff03 2px, #fff03 3px),
     radial-gradient(ellipse at center, #38634d, transparent 80%);
@@ -643,10 +643,14 @@ strong {
 .pending-cards .hwatu {
   width: 36px;
 }
+.turn-status {
+  position: relative;
+  min-height: 0;
+}
 .turn-message {
   z-index: 50;
   position: absolute;
-  bottom: 5px;
+  bottom: 0;
   left: 0;
   right: 0;
   height: 23px;
@@ -1167,7 +1171,7 @@ strong {
     min-height: 62px;
   }
   .game-table {
-    grid-template-rows: 44px 28px 57px minmax(230px, 1fr) 28px 57px 153px;
+    grid-template-rows: 44px 28px 57px minmax(0, 1fr) 24px 28px 57px 153px;
   }
   .captured-group {
     height: 49px;
@@ -1183,6 +1187,59 @@ strong {
   }
   .opponent-hand .hwatu {
     width: 22px;
+  }
+}
+@media (max-height: 700px) {
+  .game-table {
+    --play-card-width: 40px;
+    grid-template-rows: 44px 26px 46px minmax(0, 1fr) 24px 26px 46px 146px;
+  }
+  .floor-grid {
+    inset: 22px 8px;
+  }
+  .captured-group {
+    height: 38px;
+  }
+  .mini-stack .hwatu {
+    width: 14px;
+  }
+  .empty-slot {
+    width: 14px;
+    height: 22px;
+  }
+}
+@media (max-height: 640px) {
+  .game-table {
+    --play-card-width: 36px;
+    grid-template-rows: 44px 24px 42px minmax(0, 1fr) 24px 24px 42px 134px;
+  }
+  .captured-group {
+    height: 34px;
+  }
+  .player-score strong {
+    font-size: 21px;
+  }
+}
+@media (max-height: 610px) {
+  .game-table {
+    --play-card-width: 34px;
+    grid-template-rows: 44px 24px 38px minmax(0, 1fr) 24px 24px 38px 128px;
+  }
+  .floor-grid {
+    inset: 18px 8px;
+  }
+  .captured-group {
+    height: 30px;
+  }
+  .group-title {
+    line-height: 13px;
+  }
+  .mini-stack .hwatu {
+    width: 11px;
+  }
+  .empty-slot {
+    width: 11px;
+    height: 17px;
   }
 }
 @media (orientation: landscape) and (max-height: 500px) {

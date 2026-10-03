@@ -1326,16 +1326,19 @@ export function MatgoApp() {
                 ))}
               </div>
             )}
-            <div className={`turn-message ${busy && specialEffect ? 'callout' : ''}`} role="status">
-              {busy && specialEffect ? (
-                <>
-                  {specialEffect.label}
-                  <small>{specialEffect.detail}</small>
-                </>
-              ) : (
-                snapshotStatus
-              )}
-            </div>
+            {busy && specialEffect && (
+              <div className="turn-message callout" role="status">
+                {specialEffect.label}
+                <small>{specialEffect.detail}</small>
+              </div>
+            )}
+          </div>
+          <div className="turn-status">
+            {!(busy && specialEffect) && (
+              <div className="turn-message" role="status">
+                {snapshotStatus}
+              </div>
+            )}
           </div>
           <PlayerInfo
             name={mode === 'multi' ? (room?.names[me] ?? nick) : nick}
