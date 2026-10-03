@@ -21,7 +21,7 @@ test('mobile back closes nested menus, confirms game exit and keeps the home pag
   await page.goBack();
   await expect(settings).toHaveCount(0);
   await page.getByRole('button', { name: /친구와 치기/ }).click();
-  await expect(page.getByRole('heading', { name: '내 이름으로 함께해요.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '친구와 치기' })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole('link', { name: '토끼맞고 홈' })).toBeVisible();
   await page.getByRole('button', { name: /혼자 치기/ }).click();

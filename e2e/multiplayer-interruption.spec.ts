@@ -34,7 +34,7 @@ test('mandatory chrysanthemum choice releases the screen on disconnect and resum
     await expect(pa.getByTestId('room-code')).toBeVisible({ timeout: 15000 });
     const code = await pa.getByTestId('room-code').innerText();
     await pb.goto(`/?room=${code}`);
-    await pb.getByRole('button', { name: /내 이름으로 참여/ }).click();
+    await pb.getByRole('button', { name: /참여하기/ }).click();
     await expect(pa.getByTestId('game-table')).toBeVisible();
     await expect(pb.getByTestId('game-table')).toBeVisible();
     await env.withSecurityRulesDisabled(async (context) => {

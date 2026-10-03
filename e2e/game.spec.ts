@@ -195,14 +195,14 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
     );
   await pa.goto('/');
   await pa.getByRole('button', { name: /친구와 치기/ }).click();
-  await pa.getByLabel('내 이름 · 두 경우 모두 이 이름으로 참여해요').fill('지훈');
+  await pa.getByLabel('내 이름').fill('지훈');
   await pa.getByRole('button', { name: /방 만들기/ }).click();
   await expect(pa.getByTestId('room-code')).toBeVisible({ timeout: 15000 });
   const code = await pa.getByTestId('room-code').innerText();
   expect(code).toMatch(/^[0-9]{4}$/);
   await pb.goto(`/?room=${code}`);
-  await pb.getByLabel('내 이름 · 두 경우 모두 이 이름으로 참여해요').fill('민수');
-  await pb.getByRole('button', { name: /내 이름으로 참여/ }).click();
+  await pb.getByLabel('내 이름').fill('민수');
+  await pb.getByRole('button', { name: /참여하기/ }).click();
   await game(pa);
   await game(pb);
   const match = async () => {

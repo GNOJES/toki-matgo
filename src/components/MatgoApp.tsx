@@ -86,7 +86,7 @@ export function MatgoApp() {
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
-  const [nickname, setNickname] = useState('');
+  const [friendName, setFriendName] = useState('');
   const [codeInput, setCodeInput] = useState('');
   const [room, setRoom] = useState<RoomMessage | null>(null);
   const [view, setView] = useState<GameView | null>(null);
@@ -571,7 +571,7 @@ export function MatgoApp() {
     setPlayHistory(storedHistory);
     setStats(soloStats(storedHistory));
     setPrefs(readPreferences());
-    setNickname(getItem('toki.nickname.v1') ?? '');
+    setFriendName(getItem('toki.nickname.v1') ?? '');
     const params = new URLSearchParams(window.location.search);
     const code = params.get('room')?.toUpperCase();
     setDebug(process.env.NODE_ENV === 'development' && params.get('debug') === '1');
@@ -851,7 +851,7 @@ export function MatgoApp() {
     !dealerNotice &&
     view.currentPlayer === me &&
     (mode === 'single' || (connected && !!room?.canAct));
-  const nick = nickname.trim() || '나';
+  const ownName = mode === 'single' ? '나' : (room?.names[me] ?? (friendName.trim() || '나'));
   const opponent = mode === 'single' ? '토끼' : (room?.names[1 - me] ?? '친구');
   const zoomCards = (cards: HwatuCard[], title: string) => setZoom({ cards, title });
   const tapCard = (c: HwatuCard) => {
@@ -1016,7 +1016,7 @@ export function MatgoApp() {
         </section>
       )}
       {screen === 'friends' && (
-        <section className="connection-screen">
+        <section className="connection-screen friends-screen">
           <header>
             <button className="icon-button" aria-label="홈으로" onClick={leave}>
               ←
@@ -1029,58 +1029,50 @@ export function MatgoApp() {
               <SettingsIcon />
             </button>
           </header>
-          <span className="eyebrow">우리 둘만의 화투판</span>
-          <h1>내 이름으로 함께해요.</h1>
-          <p className="muted">친구에게 표시될 내 이름을 먼저 적고, 방을 만들거나 참여하세요.</p>
+          <h1>친구와 치기</h1>
           <label className="field">
-            내 이름 · 두 경우 모두 이 이름으로 참여해요
+            내 이름
             <input
-              value={nickname}
+              value={friendName}
               onChange={(e) => {
-                setNickname(e.target.value);
+                setFriendName(e.target.value);
                 storeItem('toki.nickname.v1', e.target.value);
               }}
               maxLength={12}
-              placeholder="친구 이름이 아닌, 내 이름 또는 별명"
+              placeholder="내 이름을 넣어주세요"
               autoComplete="nickname"
             />
           </label>
           <button
             className="primary"
             disabled={entering}
-            onClick={() => connectRoom(undefined, undefined, nickname.trim() || '방장')}
+            onClick={() => connectRoom(undefined, undefined, friendName.trim() || '방장')}
           >
-            내 이름으로 방 만들기 <span>＋</span>
+            방 만들기
           </button>
-          <p className="name-help">
-            이름을 비우면 방을 만들 때는 방장, 참여할 때는 참가자로 표시돼요.
-          </p>
-          <div className="or-divider">친구가 만든 방에 들어가려면</div>
+          <div className="or-divider">친구 방에 참여</div>
           <label className="field">
-            친구가 알려준 방 코드
+            방 코드
             <input
               className="room-input"
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
               maxLength={4}
-              placeholder="숫자 4자리 · 예: 0123"
+              placeholder="숫자 4자리"
               inputMode="numeric"
               pattern="[0-9]{4}"
               autoCapitalize="none"
               autoCorrect="off"
             />
           </label>
+          <p className="join-name-hint">참여할 내 이름을 위에 적어주세요.</p>
           <button
             className="secondary"
             disabled={entering || codeInput.length !== 4}
-            onClick={() => connectRoom(codeInput, undefined, nickname.trim() || '참가자')}
+            onClick={() => connectRoom(codeInput, undefined, friendName.trim() || '참가자')}
           >
-            내 이름으로 참여 <span>→</span>
+            참여하기
           </button>
-          <p className="fine-print">
-            같은 방의 두 사람만 패를 볼 수 있어요.
-            <br />방 코드나 초대 링크를 아는 친구와 둘이서 즐겨요.
-          </p>
         </section>
       )}
       {screen === 'lobby' && (
@@ -1341,7 +1333,7 @@ export function MatgoApp() {
             )}
           </div>
           <PlayerInfo
-            name={mode === 'multi' ? (room?.names[me] ?? nick) : nick}
+            name={ownName}
             score={view.scores[me].baseScore}
             go={view.players[me].goCount}
             active={view.currentPlayer === me}
