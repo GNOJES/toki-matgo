@@ -585,6 +585,9 @@ strong {
 .floor-grid {
   position: absolute;
   inset: 26px 8px;
+  max-width: calc(var(--floor-width) * 6.6);
+  max-height: calc(var(--floor-width) * 4.7);
+  margin: auto;
 }
 .floor-month {
   position: absolute;
