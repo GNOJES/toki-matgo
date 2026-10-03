@@ -1118,6 +1118,8 @@ export function MatgoApp() {
             </button>
             {view.phase === 'GO_STOP' && canPlay ? (
               <GoStopDecision
+                key={`${round}:${view.stateVersion}`}
+                deferPopup={!!zoom || settings || rules || exit || invite || debugPanel}
                 score={view.scores[me]}
                 goCount={view.players[me].goCount}
                 onGo={() => dispatch({ type: 'GO', player: me })}

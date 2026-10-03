@@ -1671,6 +1671,39 @@ strong {
   color: #fff9e9;
   border: 2px solid #ffb59b;
 }
+.go-stop-expanded {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 12px;
+  padding: 22px 18px 18px;
+}
+.go-stop-expanded .go-stop-summary {
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 8px;
+  white-space: normal;
+  text-align: center;
+}
+.go-stop-expanded .go-stop-summary strong {
+  font-size: 32px;
+}
+.go-stop-expanded .go-stop-summary span {
+  font-size: 18px;
+}
+.go-stop-expanded .go-stop-summary small {
+  font-size: 12px;
+}
+.go-stop-modal .go-stop-decision button {
+  width: 100%;
+  min-height: 68px;
+  margin: 0;
+  font-size: 30px;
+}
+.go-stop-modal .view-cards-button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 16px;
+}
 .sr-only {
   position: absolute;
   width: 1px;
