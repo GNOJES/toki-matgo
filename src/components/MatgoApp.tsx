@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushSync } from 'react-dom';
 import QRCode from 'qrcode';
+import { readHistory, updateHistory } from '../lib/history-store';
 import { registerPwa } from '../lib/register-pwa';
 import { cardFlight, type FlightGeometry } from '../lib/card-motion';
 import { syncFloorLayout, FLOOR_PLACES, type FloorLayout } from '../lib/floor-layout';
@@ -18,7 +19,6 @@ import { PlayHistory } from './PlayHistory';
 import {
   HISTORY_KEY,
   emptyHistory,
-  parseHistory,
   addResult,
   soloStats,
   resetSolo,
@@ -449,7 +449,14 @@ export function MatgoApp() {
             setImpact(null);
             setLanding(null);
             waitingFlight.current = {};
+            setStatus('');
+            setHighlight([]);
+            setSpecialEffect(null);
             setError('패 이동을 복구했어요. 계속 칠 수 있어요.');
+            if (modeRef.current === 'multi')
+              void multiplayer.current
+                ?.ready(roundRef.current, next.stateVersion)
+                .catch(() => setError('연결을 복구하고 있어요.'));
           }
         });
     },
@@ -458,12 +465,16 @@ export function MatgoApp() {
   const saveResult = useCallback((input: Parameters<typeof addResult>[1]) => {
     if (recorded.current.has(input.id)) return;
     recorded.current.add(input.id);
-    const stored = getItem(HISTORY_KEY);
-    const next = addResult(stored === null ? historyRef.current : parseHistory(stored), input);
-    historyRef.current = next;
-    setPlayHistory(next);
-    storeItem(HISTORY_KEY, JSON.stringify(next));
-    if (input.mode === 'single') setStats(soloStats(next));
+    void updateHistory((h) => addResult(h, input))
+      .then((next) => {
+        historyRef.current = next;
+        setPlayHistory(next);
+        if (modeRef.current === 'single') setStats(soloStats(next));
+      })
+      .catch(() => {
+        recorded.current.delete(input.id);
+        setError('이번 판 기록을 저장하지 못했어요. 브라우저 저장 공간을 확인해주세요.');
+      });
   }, []);
   const connectRoom = useCallback(
     (code?: string, _uid?: string, name?: string) => {
@@ -568,10 +579,19 @@ export function MatgoApp() {
     [present, publish, saveResult],
   );
   useEffect(() => {
-    const storedHistory = parseHistory(getItem(HISTORY_KEY));
-    historyRef.current = storedHistory;
-    setPlayHistory(storedHistory);
-    setStats(soloStats(storedHistory));
+    let active = true;
+    const refreshHistory = () =>
+      void readHistory()
+        .then((next) => {
+          if (!active) return;
+          historyRef.current = next;
+          setPlayHistory(next);
+          if (modeRef.current === 'single') setStats(soloStats(next));
+        })
+        .catch(() => {
+          if (active) setError('기록 저장소를 열지 못했어요. 브라우저 저장 공간을 확인해주세요.');
+        });
+    refreshHistory();
     setPrefs(readPreferences());
     setFriendName(getItem('toki.nickname.v1') ?? '');
     const params = new URLSearchParams(window.location.search);
@@ -596,14 +616,12 @@ export function MatgoApp() {
     const syncHistory = (event: StorageEvent) => {
       if (event.storageArea !== localStorage || (event.key !== HISTORY_KEY && event.key !== null))
         return;
-      const next = parseHistory(event.key === null ? null : event.newValue);
-      historyRef.current = next;
-      setPlayHistory(next);
-      if (modeRef.current === 'single') setStats(soloStats(next));
+      refreshHistory();
     };
     window.addEventListener('storage', syncHistory);
     const cleanupPwa = registerPwa();
     return () => {
+      active = false;
       window.removeEventListener('storage', syncHistory);
       cleanupPwa();
       generation.current++;
@@ -938,12 +956,13 @@ export function MatgoApp() {
           history={playHistory}
           onClose={() => setShowHistory(false)}
           onReset={() => {
-            const stored = getItem(HISTORY_KEY);
-            const next = resetSolo(stored === null ? historyRef.current : parseHistory(stored));
-            historyRef.current = next;
-            setPlayHistory(next);
-            storeItem(HISTORY_KEY, JSON.stringify(next));
-            if (mode === 'single') setStats(soloStats(next));
+            void updateHistory(resetSolo)
+              .then((next) => {
+                historyRef.current = next;
+                setPlayHistory(next);
+                if (modeRef.current === 'single') setStats(soloStats(next));
+              })
+              .catch(() => setError('기록을 초기화하지 못했어요. 다시 시도해주세요.'));
           }}
         />
       )}

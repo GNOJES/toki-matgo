@@ -81,6 +81,8 @@ export interface GameState {
   dealer: PlayerId;
   dealerDraw: [number, number];
   phase: 'PLAY' | 'SELECT_FLOOR' | 'SELECT_KUKJIN' | 'GO_STOP' | 'FINISHED';
+  /** Manual conversion asks for Go before the player has spent this turn. */
+  continueTurnAfterGo?: boolean;
   turn: TurnState | null;
   ppukOwners: Record<number, PlayerId>;
   bonusAttachments: Record<string, number>;

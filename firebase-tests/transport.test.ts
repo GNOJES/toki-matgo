@@ -91,6 +91,28 @@ it('real anonymous Auth, rooms, guest choice -> host transaction, invalid/duplic
   );
   transports.push(gb);
   await expect.poll(() => !!a?.canAct && !!b?.canAct).toBe(true);
+  // A malformed legacy entry must be pruned without blocking the following valid actions.
+  await env.withSecurityRulesDisabled(async (c) => {
+    await set(
+      ref(
+        c.database('https://demo-toki-matgo-default-rtdb.firebaseio.com'),
+        `rooms/${ha.code}/actions/${guest.uid}/poison`,
+      ),
+      {
+        uid: guest.uid,
+        sequence: 1.5,
+        round: 1,
+        stateVersion: 1,
+        createdAt: 1,
+        action: { type: 'GO', player: 1 },
+      },
+    );
+  });
+  await expect
+    .poll(async () =>
+      (await get(ref(host.db, `rooms/${ha.code}/actions/${guest.uid}/poison`))).exists(),
+    )
+    .toBe(false);
   expect(a!.me).toBe(0);
   expect(b!.me).toBe(1);
   await expect(
@@ -346,4 +368,19 @@ it('numeric allocation skips active collisions, reuses expired codes and default
   expect(room.players![joiner.uid].name).toBe('참가자');
   await guest.leave();
   await active.leave();
+});
+
+it('simultaneous room allocations by the same UID allow only one live room', async () => {
+  const host = await user();
+  const callbacks = { state: () => {}, connection: () => {}, error: () => {} };
+  const results = await Promise.allSettled([
+    FirebaseTransport.open(callbacks, undefined, '방장', false, async () => host),
+    FirebaseTransport.open(callbacks, undefined, '방장', false, async () => host),
+  ]);
+  const successes = results.filter(
+    (r): r is PromiseFulfilledResult<FirebaseTransport> => r.status === 'fulfilled',
+  );
+  for (const r of successes) transports.push(r.value);
+  expect(successes).toHaveLength(1);
+  await successes[0].value.leave();
 });

@@ -348,8 +348,10 @@ export function applyAction(state: GameState, action: GameAction): ActionResult 
       p.goAtScore = calculateScore(p).baseScore;
       s.lastGo = action.player;
       events.push({ type: 'GO_DECLARED', player: action.player, label: `${p.goCount}고` });
-      advance(s, events);
+      if (s.continueTurnAfterGo) s.phase = 'PLAY';
+      else advance(s, events);
     }
+    delete s.continueTurnAfterGo;
   } else if (action.type === 'SET_KUKJIN') {
     const choosing = s.phase === 'SELECT_KUKJIN';
     if (
@@ -377,6 +379,7 @@ export function applyAction(state: GameState, action: GameAction): ActionResult 
       const score = calculateScore(p).baseScore;
       if (score >= RULES.stopScore && score > p.goAtScore) {
         s.phase = 'GO_STOP';
+        s.continueTurnAfterGo = true;
         events.push({ type: 'GO_STOP_REQUIRED', player: action.player });
       }
     }

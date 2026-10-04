@@ -36,3 +36,16 @@ it('last-turn conversion settles immediately rather than losing the scoring oppo
   expect(n.phase).toBe('FINISHED');
   expect(n.result?.winner).toBe(0);
 });
+
+it('manual conversion followed by Go preserves the unplayed turn', () => {
+  const before = createFixture('국화 점수 선택');
+  const choice = applyAction(before, { type: 'SET_KUKJIN', player: 0, asPi: true }).nextState;
+  expect(choice.phase).toBe('GO_STOP');
+  const { nextState: after, events } = applyAction(choice, { type: 'GO', player: 0 });
+  expect(after.currentPlayer).toBe(0);
+  expect(after.turnNumber).toBe(before.turnNumber);
+  expect(after.players[0].hand).toEqual(before.players[0].hand);
+  expect(after.players[0].turnsRemaining).toBe(before.players[0].turnsRemaining);
+  expect(after.deck).toEqual(before.deck);
+  expect(events.some((e) => e.type === 'TURN_ENDED')).toBe(false);
+});

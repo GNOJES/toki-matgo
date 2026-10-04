@@ -99,3 +99,11 @@ npm run test:pwa        # 프로덕션 캐시·오프라인 싱글플레이
 - [구조](docs/ARCHITECTURE.md): 엔진, Firebase transport, 판정·연출 동기화
 - [QA](docs/QA.md): 자동 검증과 실기기 확인 항목
 - [에셋](docs/ASSETS.md): Marcus Richert 원본 화투 대응표·CC BY-SA 출처, 보너스/뒷면
+
+
+### 출시 검증과 Rules 변경 배포
+
+- `npm run build` / Vercel 빌드는 Firebase 환경변수 누락·프로젝트 불일치·프로덕션 에뮬레이터 설정을 거절한다. Vercel 빌드에서는 단위 테스트도 실행한다.
+- `.github/workflows/ci.yml`의 `release-checks`가 타입·단위·Firebase Rules/통신·모바일 E2E·프로덕션 오프라인 테스트를 실행한다. 테스트는 demo 에뮬레이터를 사용한다.
+- GitHub main 브랜치 보호에서 **release-checks 필수 통과**를 설정한다. 워크플로 파일만으로 브랜치 보호나 Vercel 자동 배포 대기를 강제할 수는 없다. 보호 설정 전에는 검사 통과를 확인한 뒤 main에 병합한다.
+- 이번 데이터 구조 변경은 **Rules 게시 → 프런트엔드 배포 → 두 기기 새로고침·새 방 시작** 순서다. 상세 절차와 롤백은 [Firebase 운영 안내](docs/FIREBASE.md#2026-10-04-출시-전-개선-버전-적용-순서)를 따른다.

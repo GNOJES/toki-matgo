@@ -6,7 +6,7 @@
 - Auth domain: `toki-matgo.firebaseapp.com`
 - RTDB: `https://toki-matgo-default-rtdb.asia-southeast1.firebasedatabase.app`
 - Anonymous Authentication: 사용자 활성화 완료
-- 현재 Database: 잠금 모드. 아래 Rules를 사용자가 Publish해야 사용 가능
+- 기존 Rules는 게시 완료. 이번 변경의 새 Rules를 프런트엔드 배포 전에 다시 게시해야 함
 - 로컬 `.env.local`: 제공받은 7개 web config 값으로 구성, Git 제외
 - Vercel 등록 값: [README의 환경변수 블록](../README.md#vercel-환경변수와-배포)
 
@@ -45,13 +45,14 @@ Rules는 게임 규칙 자체를 계산하지 않는다. 방장이 저장한 JSO
 ## 데이터 구조와 판정 흐름
 
 ```text
+roomOwners/{uid}: code, createdAt, expiresAt
 rooms/{숫자 4자리 코드}
   meta: hostUid, guestUid?, status, createdAt, updatedAt, expiresAt
   players/{uid}
     name
     connections/{브라우저 세션 UUID}: true
     ready: {round, version}
-  actions/{uid}/{10자리 sequence}
+  actions/{uid}/pending
     uid, sequence, round, stateVersion, action, createdAt
   state
     version: host revision
@@ -112,3 +113,23 @@ Host가 끊기면 Guest는 대기하고 나갈 수 있다. 서버가 대신 게�
 기존 `server/index.ts` / `server/rooms.ts`와 Socket.IO 명령은 legacy이며 Firebase의 운영 경로에서는 실행하지 않는다. 최종 프런트에는 Node 게임 서버 import/URL 연결이 없다.
 
 참고: [익명 인증](https://firebase.google.com/docs/auth/web/anonymous-auth), [인증 persistence](https://firebase.google.com/docs/auth/web/auth-state-persistence), [RTDB 트랜잭션](https://firebase.google.com/docs/database/web/read-and-write), [presence / onDisconnect](https://firebase.google.com/docs/database/web/offline-capabilities), [Security Rules](https://firebase.google.com/docs/database/security), [Emulator 테스트](https://firebase.google.com/docs/rules/unit-tests).
+
+## 2026-10-04 출시 전 개선 버전 적용 순서
+
+1. 진행 중인 친구 게임을 끝낸다. 새 Rules는 이전 클라이언트의 숫자 키 행동 쓰기를 차단하므로 운영 중 무중단 호환 배포는 지원하지 않는다.
+2. 이 브랜치의 `database.rules.json` **전체**를 Firebase Console에 게시한다. `roomOwners` 노드를 포함해야 한다.
+3. GitHub `Release checks / release-checks` 통과를 확인하고 프런트엔드를 배포한다. Vercel 환경변수 7개는 기존 값을 유지한다.
+4. 두 기기 모두 새로고침 후 **새 방**에서 시작한다. 코드 생성, 참가, 패 내기, 뒤로가기, 연결 복구를 확인한다.
+5. 롤백 시에는 이전 프런트엔드와 이전 Rules를 한 쌍으로 되돌린다. 운영 데이터를 삭제해 롤백하지 않는다.
+
+변경 후 UID당 동시에 소유할 수 있는 활성 방은 1개이며 예약 생성 간격은 10초다. 중복 방 예약은 Rules가 거절한다. 예약 직후 드문 방 번호 충돌이 나면 10초 후 다시 시도한다. 만료 시간은 기존과 동일하게 24시간이며 신규 생성 시 만료 방을 정리·재사용한다. `roomOwners`의 마지막 예약은 삭제를 금지해 삭제 후 간격 제한 우회를 막는다. UID마다 작은 레코드 하나가 남는다. 기존 버전에서 이미 만든 방에는 인덱스가 없으므로 위의 새 방 시작 절차가 필요하다.
+
+요청은 `actions/{uid}/pending`에 참가자당 최대 한 건 저장한다. 동일 순번은 불변이고 다음 순번으로 교체한다. Rules는 정수 범위, 카드 ID, 행동별 필드, 미지정 필드를 검사한다. 기존 잘못된 큐 항목은 방장이 격리·삭제하고 정상 항목 처리를 계속한다. 통신 제한 시간이 지나도 SDK의 이미 전송 중인 쓰기가 나중에 완료될 수 있으므로 재시도는 같은 순번을 사용하며 엔진은 중복 적용하지 않는다.
+
+4자리 코드를 아는 사람의 참가와 방장 신뢰 모델은 제품의 합의된 범위로 유지했다. 새 익명 UID를 대량 발급하는 공격을 계정당 방 제한만으로 막을 수는 없다. 무료 구조에서 전역 가입/전송 횟수 제한까지 보장하는 구현은 아니다.
+
+## 기록과 오프라인 업데이트
+
+누적 기록은 IndexedDB `toki-history-v2`의 트랜잭션으로 저장하며 기존 localStorage 기록은 최초 한 번 이관한다. localStorage는 호환 캐시·다른 탭 갱신 신호로만 쓴다. 브라우저 사이트 데이터 삭제 시 기록도 삭제된다.
+
+프로덕션 빌드의 `build-offline-shell.mjs`는 HTML과 정확한 JS/CSS/폰트 목록을 생성한다. 서비스워커는 이 묶음 전체가 다운로드된 후에만 교체된다. 현재·직전 캐시와 열린 이전 게임 탭에 필요한 캐시만 보존한다. 열린 탭의 응답을 아직 받지 못했다면 삭제를 보류하며, 탭이 버전 정보를 다시 보내면 정리한다. 업데이트 시 게임을 강제 새로고침하지 않는다.

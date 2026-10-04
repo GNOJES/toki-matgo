@@ -30,7 +30,7 @@ test('production caches first load, reloads offline, plays single and hides debu
         const reg = await navigator.serviceWorker.getRegistration();
         if (!reg?.active) return false;
         const names = await caches.keys();
-        const name = names.find((name) => name.startsWith('toki-v9-auto-assets-'));
+        const name = names.find((name) => name.startsWith('toki-v10-assets-'));
         if (!name) return false;
         const cache = await caches.open(name);
         const keys = await cache.keys();

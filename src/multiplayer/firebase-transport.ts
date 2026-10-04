@@ -11,6 +11,7 @@ import {
   type Database,
   type Unsubscribe,
 } from 'firebase/database';
+import { isRequest, pendingRequests } from './requests';
 import { firebaseClient } from './firebase-client';
 import {
   connected,
@@ -79,6 +80,20 @@ export class FirebaseTransport implements MultiplayerTransport {
     const now = Date.now();
     // Delete only this user's previously owned rooms; no global/public room enumeration.
     if (!code) {
+      const reservation = ref(db, `roomOwners/${uid}`);
+      const prior = (await get(reservation)).val() as {
+        code: string;
+        createdAt: number;
+        expiresAt: number;
+      } | null;
+      if (prior) {
+        const active = (await get(ref(db, `rooms/${prior.code}/meta`))).val() as
+          RoomData['meta'] | null;
+        if (active?.hostUid === uid && active.status !== 'closed' && active.expiresAt > now)
+          throw Error(`이미 만든 방 ${prior.code}에 다시 참여해주세요.`);
+        if (now < prior.createdAt + 10000)
+          throw Error('방을 만든 뒤 10초 후에 새 방을 만들 수 있어요.');
+      }
       let owned: string[] = [];
       try {
         const stored: unknown = JSON.parse(localStorage.getItem('toki.firebase.owned.v1') ?? '[]');
@@ -105,6 +120,12 @@ export class FirebaseTransport implements MultiplayerTransport {
             // Rules check expiry again at deletion: an active replacement is protected.
             await remove(ref(db, `rooms/${proposed}`));
           }
+          // Server Rules serialize competing tabs. A collision after reservation requires a fresh retry.
+          await set(reservation, {
+            code: proposed,
+            createdAt: serverTimestamp(),
+            expiresAt: now + ROOM_TTL,
+          });
           const result = await runTransaction(
             ref(db, `rooms/${proposed}`),
             (existing) =>
@@ -128,8 +149,11 @@ export class FirebaseTransport implements MultiplayerTransport {
             break;
           }
         } catch (error) {
-          if (attempt === CREATE_ATTEMPTS - 1 || !/permission.denied/i.test(String(error)))
-            throw error;
+          if (/permission.denied/i.test(String(error)))
+            throw Error(
+              '다른 창에서 방을 만들었거나 방 번호가 겹쳤어요. 10초 후 다시 시도해주세요.',
+            );
+          throw error;
         }
       }
       if (!code) throw Error('방을 만들지 못했어요. 다시 시도해주세요.');
@@ -284,9 +308,12 @@ export class FirebaseTransport implements MultiplayerTransport {
           );
           await update(this.path('meta'), { status: 'active', updatedAt: serverTimestamp() });
         } else if (state.game) {
-          const requests = Object.values(room.actions ?? {})
-            .flatMap((actions) => Object.values(actions))
-            .sort((a, b) => a.createdAt - b.createdAt || a.sequence - b.sequence);
+          const { requests, invalid } = pendingRequests(room.actions, [
+            room.meta.hostUid,
+            room.meta.guestUid,
+          ]);
+          if (invalid.length)
+            await update(this.path(''), Object.fromEntries(invalid.map((path) => [path, null])));
           for (const request of requests) {
             const player = request.uid === room.meta.hostUid ? 0 : 1;
             if (request.sequence <= state.processed[player]) continue;
@@ -307,7 +334,11 @@ export class FirebaseTransport implements MultiplayerTransport {
           for (const [uid, actions] of Object.entries(room.actions ?? {}))
             for (const [key, action] of Object.entries(actions)) {
               const player = uid === room.meta.hostUid ? 0 : 1;
-              if (action.sequence < latest.processed[player]) prune[`actions/${uid}/${key}`] = null;
+              if (
+                key !== 'pending' &&
+                (!isRequest(action) || action.sequence < latest.processed[player])
+              )
+                prune[`actions/${uid}/${key}`] = null;
             }
           if (Object.keys(prune).length) await update(this.path(''), prune);
         }
@@ -352,22 +383,26 @@ export class FirebaseTransport implements MultiplayerTransport {
       }, 20000);
       this.waiters.set(request.sequence, { resolve, reject, timer });
     });
+    const pendingWaiter = this.waiters.get(request.sequence);
     // Attach immediately: a receipt can arrive before the write acknowledgment.
     void result.catch(() => {});
     // A request identity can be written only once. Retries use its original record.
-    const location = this.path(`actions/${this.uid}/${String(request.sequence).padStart(10, '0')}`);
-    try {
-      await runTransaction(location, (existing) => (existing ? undefined : request), {
+    const location = this.path(`actions/${this.uid}/pending`);
+    // The SDK may keep an offline write pending indefinitely. Never await it ahead of the deadline.
+    void runTransaction(
+      location,
+      (existing) => (existing && existing.sequence >= request.sequence ? undefined : request),
+      {
         applyLocally: false,
-      });
-    } catch (error) {
+      },
+    ).catch((error) => {
       const waiter = this.waiters.get(request.sequence);
-      if (waiter) {
+      if (waiter && waiter === pendingWaiter) {
         clearTimeout(waiter.timer);
         this.waiters.delete(request.sequence);
         waiter.reject(new Error(readableError(error)));
       }
-    }
+    });
     return result;
   }
   nextRound(round: number, stateVersion: number, sequence: number) {

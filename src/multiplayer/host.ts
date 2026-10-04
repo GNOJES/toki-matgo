@@ -1,3 +1,4 @@
+import { isRequest } from './requests';
 import { applyAction, createGame, projectState } from '../game-engine/engine';
 import type { PlayerId } from '../game-engine/types';
 import type { HostState, RoomData, RoomMessage, Request } from './types';
@@ -75,6 +76,7 @@ export function processRequest(
   next.processed[player] = request.sequence;
   next.receipts[player] = { seq: request.sequence };
   try {
+    if (!isRequest(request)) throw Error('잘못된 요청이에요.');
     if (room.meta.status === 'closed' || room.meta.expiresAt <= Date.now())
       throw Error('종료된 방이에요. 새 방을 만들어주세요.');
     if (!next.game || request.round !== next.round) throw Error('현재 판에서 다시 선택해주세요.');

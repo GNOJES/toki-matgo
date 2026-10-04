@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
@@ -22,6 +23,10 @@ test('an open game adopts updated card assets without reload and keeps offline p
     });
   });
   let deployed = false;
+  const updatedHtml = (await readFile('public/offline-shell.html', 'utf8')).replace(
+    '</body>',
+    '<script src="/_next/static/second-build.js?dpl=upgrade-test"></script></body>',
+  );
   const original = JSON.parse(await readFile('public/card-assets.json', 'utf8'));
   const cards = Object.fromEntries(
     Object.entries(original.cards).map(([id, value]) => [
@@ -29,10 +34,9 @@ test('an open game adopts updated card assets without reload and keeps offline p
       String(value).replace(/\?v=.*/, '?v=feed12345678'),
     ]),
   );
-  const latestWorker = (await readFile('public/sw.js', 'utf8')).replace(
-    /const CACHE = .*;/,
-    "const CACHE = 'toki-v9-auto-assets-upgrade-test';",
-  );
+  const latestWorker = (await readFile('public/sw.js', 'utf8'))
+    .replace(/^const BUILD = .*;$/m, "const BUILD = 'upgrade-test';")
+    .replace(/const CACHE = .*;/, "const CACHE = 'toki-v10-assets-upgrade-test';");
   const legacyWorker = `const CACHE='toki-legacy-test';
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/','/cards/bonus-0.svg']))));
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
@@ -48,6 +52,29 @@ self.addEventListener('message',e=>{if(e.data?.type==='CACHE_APP')e.waitUntil(ca
           'Cache-Control': 'no-store',
         });
         res.end(deployed ? latestWorker : legacyWorker);
+        return;
+      }
+      if (deployed && path === '/app-shell.json') {
+        const shell = JSON.parse(await readFile('public/app-shell.json', 'utf8'));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            ...shell,
+            version: 'upgrade-test',
+            htmlHash: createHash('sha256').update(updatedHtml).digest('hex'),
+            assets: [...shell.assets, '/_next/static/second-build.js'],
+          }),
+        );
+        return;
+      }
+      if (deployed && path === '/offline-shell.html') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(updatedHtml);
+        return;
+      }
+      if (path === '/_next/static/second-build.js') {
+        res.writeHead(200, { 'Content-Type': 'application/javascript' });
+        res.end('window.secondBuildLoaded = true;');
         return;
       }
       if (deployed && path === '/card-assets.json') {
@@ -83,6 +110,10 @@ self.addEventListener('message',e=>{if(e.data?.type==='CACHE_APP')e.waitUntil(ca
     );
     await page.evaluate(async () => {
       await (await caches.open('another-app')).put('/marker', new Response('keep'));
+      for (let i = 0; i < 4; i++)
+        await (
+          await caches.open(`toki-obsolete-${i}`)
+        ).put(`/_next/static/obsolete-${i}.js`, new Response('old'));
     });
     await page.getByRole('button', { name: /혼자 치기/ }).click();
     await expect(page.getByRole('dialog', { name: '이번 판의 선' })).toBeVisible();
@@ -95,7 +126,7 @@ self.addEventListener('message',e=>{if(e.data?.type==='CACHE_APP')e.waitUntil(ca
     await expect
       .poll(() =>
         page.evaluate(async () =>
-          (await caches.keys()).includes('toki-v9-auto-assets-upgrade-test'),
+          (await caches.keys()).some((n) => n.startsWith('toki-v10-assets-upgrade-test-')),
         ),
       )
       .toBe(true);
@@ -122,10 +153,18 @@ self.addEventListener('message',e=>{if(e.data?.type==='CACHE_APP')e.waitUntil(ca
     expect(bonus).not.toContain('OLD CARD');
     expect(bonus).not.toContain('쌍피');
     const names = await page.evaluate(() => caches.keys());
-    expect(names).toContain('toki-v9-auto-assets-upgrade-test');
+    expect(names.some((n) => n.startsWith('toki-v10-assets-upgrade-test-'))).toBe(true);
     expect(names).toContain('another-app');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async () => (await caches.keys()).filter((n) => n.startsWith('toki-')).length,
+        ),
+      )
+      .toBeLessThanOrEqual(2);
     await context.setOffline(true);
     await page.reload();
+    await expect.poll(() => page.evaluate(() => (window as any).secondBuildLoaded)).toBe(true);
     await expect(page.getByRole('button', { name: /혼자 치기/ })).toBeVisible();
     await page.getByRole('button', { name: /혼자 치기/ }).click();
     await page.getByRole('button', { name: '게임 시작', exact: true }).click();

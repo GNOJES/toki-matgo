@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
     "dev:server": "tsx watch server/index.ts",
-    "build": "NEXT_BUILD_DIR=.next-prod next build && node scripts/prepare-standalone.mjs",
-    "build:vercel": "next build",
+    "build": "NEXT_BUILD_DIR=.next-prod next build && node scripts/build-offline-shell.mjs .next-prod && node scripts/prepare-standalone.mjs",
+    "build:vercel": "next build && node scripts/build-offline-shell.mjs .next",
     "start": "HOSTNAME=0.0.0.0 node .next-prod/standalone/server.js",
     "start:server": "tsx server/index.ts",
     "test": "vitest run",
@@ -20,8 +20,8 @@
     "dev:firebase": "node scripts/dev-firebase.mjs",
     "test:firebase": "firebase emulators:exec --only auth,database --project demo-toki-matgo \"vitest run --config vitest.firebase.config.ts\"",
     "predev": "node scripts/version-card-assets.mjs",
-    "prebuild": "node scripts/version-card-assets.mjs",
-    "prebuild:vercel": "node scripts/version-card-assets.mjs"
+    "prebuild": "node scripts/validate-env.mjs && node scripts/version-card-assets.mjs",
+    "prebuild:vercel": "node scripts/validate-env.mjs && node scripts/version-card-assets.mjs && npm test"
   },
   "dependencies": {
     "firebase": "^12.19.0",
