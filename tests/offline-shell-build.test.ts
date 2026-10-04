@@ -20,6 +20,8 @@ it.each(['standalone', 'adapter'])('builds the offline shell from %s output', as
     });
     expect(await readFile(`${root}/public/offline-shell.html`, 'utf8')).toBe('<html>home</html>');
     const manifest = JSON.parse(await readFile(`${root}/public/app-shell.json`, 'utf8'));
+    expect(manifest.version).toBe('development');
+    expect(await readFile(`${root}/public/sw.js`, 'utf8')).toBe("const BUILD = 'development';");
     expect(manifest.assets).toEqual(['/_next/static/chunks/app.js']);
   } finally {
     await rm(root, { recursive: true, force: true });

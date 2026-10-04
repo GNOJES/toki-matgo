@@ -13,11 +13,11 @@ try {
 const files = (await readdir(`${dir}/static`, { recursive: true }))
   .filter((p) => /\.(js|css|woff2?)$/.test(p))
   .sort();
-const version = createHash('sha256')
-  .update(html)
-  .update(JSON.stringify(files))
-  .digest('hex')
-  .slice(0, 16);
+// Vercel may snapshot existing public files during Next's adapter build.
+// Freeze the worker identity in prebuild and reuse it, never rewrite sw.js here.
+const worker = await readFile('public/sw.js', 'utf8');
+const version = worker.match(/^const BUILD = '([^']+)';/m)?.[1];
+if (!version) throw Error('Run the asset prebuild before generating the offline shell');
 await writeFile('public/offline-shell.html', html);
 await writeFile(
   'public/app-shell.json',
@@ -28,9 +28,4 @@ await writeFile(
     assets: files.map((p) => `/_next/static/${p}`),
   }),
 );
-const worker = (await readFile('public/sw.js', 'utf8')).replace(
-  /^const BUILD = .*;$/m,
-  `const BUILD = '${version}';`,
-);
-await writeFile('public/sw.js', worker);
 console.log(`Offline shell ${version}: ${files.length} assets`);
