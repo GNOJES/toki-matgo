@@ -165,3 +165,27 @@ for (const draw of ['m1-2', 'm12-0'])
     }
     await expect(page.getByTestId('game-table')).toHaveAttribute('data-busy', 'false');
   });
+
+for (const stage of ['hand', 'deck'])
+  test(`mobile identical pi auto-pick strikes one floor card from ${stage} without a chooser`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.goto('/?debug=1');
+    await page.getByRole('button', { name: /혼자 치기/ }).click();
+    await page.getByRole('button', { name: '개발', exact: true }).click();
+    await page.getByText('직접 패 분배', { exact: true }).click();
+    const played = stage === 'hand' ? 'm1-0' : 'm11-0';
+    await page.getByRole('textbox', { name: '직접 패 분배 JSON' }).fill(
+      JSON.stringify({
+        hand: [played, 'm8-0', 'm8-1', 'm8-2', 'm9-0', 'm9-1', 'm9-2', 'm10-0', 'm10-1', 'm10-2'],
+        floor: ['m1-2', 'm1-3', 'm2-0', 'm3-0', 'm4-0', 'm5-0', 'm6-0', 'm7-0'],
+        draw: [stage === 'hand' ? 'm12-0' : 'm1-0'],
+      }),
+    );
+    await page.getByRole('button', { name: '이 분배로 시작' }).click();
+    await observeFlights(page);
+    await page.locator(`.hand-card[data-card-id="${played}"]`).click();
+    await expect.poll(() => hasFlight(page, 'play', 'm1-0', 'm1-2')).toBe(true);
+    await expect(page.getByRole('dialog', { name: '어떤 패를 먹을까요?' })).toHaveCount(0);
+  });

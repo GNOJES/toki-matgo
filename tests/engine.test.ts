@@ -465,3 +465,45 @@ it('normal event order makes matching and draw readable before capture/score', (
     'TURN_ENDED',
   ]);
 });
+
+describe('equivalent plain-pi floor matches', () => {
+  it('automatically strikes just one identical pi when playing from hand', () => {
+    const s = fixture(['m1-0', 'm5-0'], ['m1-2', 'm1-3'], ['m3-2']);
+    const { nextState, events } = play(s, 'm1-0');
+    expect(nextState.phase).not.toBe('SELECT_FLOOR');
+    expect(nextState.players[0].captured.map((c) => c.id)).toContain('m1-2');
+    expect(nextState.floor.map((c) => c.id)).toContain('m1-3');
+    expect(
+      events.find((e) => e.type === 'FLOOR_MATCHED' && e.stage === 'hand')?.cards?.map((c) => c.id),
+    ).toEqual(['m1-0', 'm1-2']);
+    expect(events.some((e) => e.type === 'FLOOR_MATCH_REQUIRED')).toBe(false);
+    assertInvariant(nextState);
+  });
+  it('automatically takes one identical pi for a revealed deck card', () => {
+    const { nextState, events } = play(
+      fixture(['m2-0', 'm5-0'], ['m1-2', 'm1-3'], ['m1-0']),
+      'm2-0',
+    );
+    expect(nextState.phase).not.toBe('SELECT_FLOOR');
+    expect(nextState.players[0].captured.map((c) => c.id)).toContain('m1-2');
+    expect(nextState.floor.map((c) => c.id)).toContain('m1-3');
+    expect(events.some((e) => e.type === 'FLOOR_MATCH_REQUIRED')).toBe(false);
+    assertInvariant(nextState);
+  });
+  it('preserves ttadak when the fourth card is revealed after automatic choice', () => {
+    const { nextState, events } = play(
+      fixture(['m1-0', 'm5-0'], ['m1-2', 'm1-3'], ['m1-1']),
+      'm1-0',
+    );
+    expect(events.some((e) => e.type === 'TTADAK')).toBe(true);
+    expect(nextState.players[0].captured.filter((c) => c.month === 1)).toHaveLength(4);
+    assertInvariant(nextState);
+  });
+  it.each(['hand', 'deck'])('keeps the %s choice when pi values differ', (stage) => {
+    const s =
+      stage === 'hand'
+        ? fixture(['m11-0', 'm5-0'], ['m11-1', 'm11-2'], ['m3-2'])
+        : fixture(['m2-0', 'm5-0'], ['m11-1', 'm11-2'], ['m11-0']);
+    expect(play(s, s.players[0].hand[0].id).nextState.phase).toBe('SELECT_FLOOR');
+  });
+});

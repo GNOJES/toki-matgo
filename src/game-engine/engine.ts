@@ -113,6 +113,16 @@ function finish(
 function matches(s: GameState, month: number) {
   return s.floor.filter((c) => !c.isBonus && c.month === month);
 }
+/** Only interchangeable one-pi cards can skip the choice; retain both matches for ttadak. */
+function equivalentPiPair(cards: GameState['floor']) {
+  return (
+    cards.length === 2 &&
+    cards[0].month === cards[1].month &&
+    cards.every(
+      (c) => c.category === 'PI' && c.piValue === 1 && !c.isBonus && c.specialType === null,
+    )
+  );
+}
 function takeFloor(s: GameState, cards: GameState['floor']) {
   const ids = new Set(cards.map((c) => c.id));
   s.floor = s.floor.filter((c) => !ids.has(c.id));
@@ -216,7 +226,7 @@ function reveal(s: GameState, events: GameEvent[]) {
     return;
   }
   const available = matches(s, card.month);
-  if (available.length === 2) {
+  if (available.length === 2 && !equivalentPiPair(available)) {
     t.options = available.map((c) => c.id);
     s.phase = 'SELECT_FLOOR';
     events.push({
@@ -227,7 +237,7 @@ function reveal(s: GameState, events: GameEvent[]) {
     });
     return;
   }
-  resolveDraw(s, available, events);
+  resolveDraw(s, equivalentPiPair(available) ? [available[0]] : available, events);
 }
 function resolveDraw(s: GameState, chosen: GameState['floor'], events: GameEvent[]) {
   const t = s.turn!;
@@ -457,7 +467,8 @@ export function applyAction(state: GameState, action: GameAction): ActionResult 
       } else {
         s.turn.played = card;
         s.turn.playMatches = matches(s, card.month);
-        if (s.turn.playMatches.length === 2) {
+        const autoMatch = equivalentPiPair(s.turn.playMatches);
+        if (s.turn.playMatches.length === 2 && !autoMatch) {
           s.phase = 'SELECT_FLOOR';
           s.turn.options = s.turn.playMatches.map((c) => c.id);
           events.push({
@@ -467,11 +478,12 @@ export function applyAction(state: GameState, action: GameAction): ActionResult 
             stage: 'hand',
           });
         } else {
+          if (autoMatch) s.turn.chosen = s.turn.playMatches[0];
           if (s.turn.playMatches.length)
             events.push({
               type: 'FLOOR_MATCHED',
               player: action.player,
-              cards: [card, ...s.turn.playMatches],
+              cards: [card, ...(autoMatch ? [s.turn.chosen!] : s.turn.playMatches)],
               stage: 'hand',
             });
           reveal(s, events);
