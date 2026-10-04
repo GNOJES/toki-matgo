@@ -1,7 +1,15 @@
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 const dir = process.argv[2] ?? '.next-prod';
-const html = await readFile(`${dir}/server/app/index.html`, 'utf8');
+// Next 16 adapters (including Vercel) put prerenders in the source-route cache.
+const homeSource = createHash('sha256').update('/page').digest('hex');
+let html;
+try {
+  html = await readFile(`${dir}/server/app/index.html`, 'utf8');
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+  html = await readFile(`${dir}/server/route-cache/APP_PAGE/${homeSource}/$/index.html`, 'utf8');
+}
 const files = (await readdir(`${dir}/static`, { recursive: true }))
   .filter((p) => /\.(js|css|woff2?)$/.test(p))
   .sort();
