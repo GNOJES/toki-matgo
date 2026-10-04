@@ -732,8 +732,8 @@ strong {
 }
 .hand-card.matchable .hwatu {
   box-shadow:
-    0 0 0 1.5px #f4d569b3,
-    0 0 8px 2px #f6d66670;
+    0 0 0 2px #f4d569cc,
+    0 0 8px 2px #f6d66680;
 }
 .bomb-pass-face svg {
   display: block;
