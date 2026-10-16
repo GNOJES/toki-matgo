@@ -313,11 +313,21 @@ test('two contexts: Firebase room / same host state / moves / reconnect / comple
   await pa.reload();
   await game(pa);
   await match();
-  await pb.getByRole('button', { name: '나가기', exact: true }).click();
-  await pb
-    .getByRole('dialog', { name: '대기실로 돌아갈까요?' })
-    .getByRole('button', { name: '대기실로', exact: true })
-    .click();
+  // A randomly dealt chongtong can finish round two before anyone plays.
+  // Use the result's exit instead of trying to click behind its native dialog.
+  if ((await pb.getByTestId('game-table').getAttribute('data-phase')) === 'FINISHED') {
+    await expect(pa.getByTestId('game-table')).toHaveAttribute('data-phase', 'FINISHED');
+    await pb
+      .locator('.result-modal')
+      .getByRole('button', { name: '대기실로', exact: true })
+      .click();
+  } else {
+    await pb.getByRole('button', { name: '나가기', exact: true }).click();
+    await pb
+      .getByRole('dialog', { name: '대기실로 돌아갈까요?' })
+      .getByRole('button', { name: '대기실로', exact: true })
+      .click();
+  }
   await expect(pb.getByRole('link', { name: '토끼맞고 홈' })).toBeVisible();
   await expect(pa.getByRole('dialog', { name: '친구가 방을 종료했어요' })).toBeVisible();
   await pa.getByRole('button', { name: '홈으로 돌아가기', exact: true }).click();

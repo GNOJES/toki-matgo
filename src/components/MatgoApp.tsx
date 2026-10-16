@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { readHistory, updateHistory } from '../lib/history-store';
 import { registerPwa } from '../lib/register-pwa';
 import { trackAnalyticsOnce } from '../lib/analytics';
+import { openingPpukEffect, type SpecialEffect } from '../lib/opening-ppuk-effect';
 import { cardFlight, type FlightGeometry } from '../lib/card-motion';
 import { syncFloorLayout, FLOOR_PLACES, type FloorLayout } from '../lib/floor-layout';
 import { useAppBack } from '../lib/use-app-back';
@@ -112,9 +113,7 @@ export function MatgoApp() {
   const [impact, setImpact] = useState<{ key: number; x: number; y: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const [specialEffect, setSpecialEffect] = useState<{ label: string; detail: string } | null>(
-    null,
-  );
+  const [specialEffect, setSpecialEffect] = useState<SpecialEffect | null>(null);
   const [status, setStatus] = useState('');
   const [highlight, setHighlight] = useState<string[]>([]);
   const [motion, setMotion] = useState<{
@@ -199,8 +198,11 @@ export function MatgoApp() {
                   : prefsRef.current.speed === 'normal'
                     ? 0.65
                     : 0.35;
-          const pause = async (ms: number) => {
-            if (factor) await new Promise<void>((resolve) => setTimeout(resolve, ms * factor));
+          const pause = async (ms: number, minimum = 0) => {
+            if (factor)
+              await new Promise<void>((resolve) =>
+                setTimeout(resolve, Math.max(ms * factor, minimum)),
+              );
             return epoch === generation.current;
           };
           for (const e of events) {
@@ -208,7 +210,9 @@ export function MatgoApp() {
             setLog((old) => [...old.slice(-100), e]);
             setStatus(e.label ?? eventLabel[e.type] ?? '');
             setHighlight(e.cards?.map((c) => c.id) ?? []);
-            if (effectDetails[e.type])
+            const openingEffect = openingPpukEffect(shown, next, e);
+            if (openingEffect) setSpecialEffect(openingEffect);
+            else if (effectDetails[e.type])
               setSpecialEffect({ label: e.label ?? e.type, detail: effectDetails[e.type] });
             const mine = e.player === meRef.current;
             const ids = new Set(e.cards?.map((c) => c.id));
@@ -417,7 +421,7 @@ export function MatgoApp() {
               if (!(await pause(350))) return;
             } else if (e.label) {
               feedback(prefsRef.current, 'special');
-              if (!(await pause(850))) return;
+              if (!(await pause(850, openingEffect ? 2200 : 0))) return;
             }
           }
           if (epoch !== generation.current) return;
@@ -1365,7 +1369,15 @@ export function MatgoApp() {
               </div>
             )}
             {busy && specialEffect && (
-              <div className="turn-message callout" role="status">
+              <div
+                className={`turn-message callout${specialEffect.player !== undefined ? ' opening-ppuk' : ''}`}
+                role="status"
+              >
+                {specialEffect.player !== undefined && (
+                  <span className="effect-player">
+                    {specialEffect.player === me ? ownName : opponent}
+                  </span>
+                )}
                 {specialEffect.label}
                 <small>{specialEffect.detail}</small>
               </div>
@@ -1822,6 +1834,8 @@ export function MatgoApp() {
             <div className="fixture-buttons">
               {[
                 '뻑과 보너스',
+                '2연뻑',
+                '3연뻑',
                 '바닥 두 장 · 따닥',
                 '3장 폭탄',
                 '폭탄과 피 강탈',

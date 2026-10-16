@@ -1581,6 +1581,18 @@ strong {
   letter-spacing: 0;
   color: #fff8df;
 }
+.turn-message.callout.opening-ppuk {
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 12px 16px;
+  white-space: normal;
+}
+.turn-message.callout .effect-player {
+  display: block;
+  font-size: 13px;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
 .kukjin-choices {
   display: grid;
   gap: 10px;

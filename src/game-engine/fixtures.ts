@@ -3,6 +3,8 @@ import { assertInvariant, createGame } from './engine';
 import type { Card, GameState } from './types';
 export const FIXTURE_NAMES = [
   '뻑과 보너스',
+  '2연뻑',
+  '3연뻑',
   '바닥 두 장 · 따닥',
   '3장 폭탄',
   '폭탄과 피 강탈',
@@ -16,6 +18,18 @@ export const FIXTURE_NAMES = [
 export type FixtureName = (typeof FIXTURE_NAMES)[number];
 /** Development fixtures still contain precisely 50 identities and follow initial dealing rules. */
 export function createFixture(name: FixtureName, seed = 12345): GameState {
+  if (name === '2연뻑' || name === '3연뻑') {
+    const s = createFixture('뻑과 보너스', seed);
+    const streak = name === '2연뻑' ? 1 : 2;
+    const p = s.players[0];
+    p.openingPpukStreak = streak;
+    p.ppukCount = streak;
+    p.sidePoints = streak === 1 ? 7 : 21;
+    s.deck.push(...p.hand.splice(10 - streak));
+    p.turnsRemaining = 10 - streak;
+    assertInvariant(s);
+    return s;
+  }
   if (name === '열두 달 바닥') {
     const s = createGame({ seed, dealer: 0 });
     const floor = CARDS.filter((c) => !c.isBonus && c.id.endsWith('-0'));
@@ -36,7 +50,7 @@ export function createFixture(name: FixtureName, seed = 12345): GameState {
     return s;
   }
   const setups: Record<
-    Exclude<FixtureName, '열두 달 바닥'>,
+    Exclude<FixtureName, '열두 달 바닥' | '2연뻑' | '3연뻑'>,
     { hand: string[]; floor: string[]; draw: string[]; opponent: string[] }
   > = {
     '뻑과 보너스': {
