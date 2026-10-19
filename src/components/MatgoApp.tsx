@@ -1423,7 +1423,7 @@ export function MatgoApp() {
                   <button
                     key={c.id}
                     data-card-id={c.id}
-                    className={`hand-card ${selected?.id === c.id ? 'selected' : ''} ${view.floor.some((f) => f.month === c.month && !c.isBonus) ? 'matchable' : ''}`}
+                    className={`hand-card ${selected?.id === c.id ? 'selected' : ''} ${canPlay && view.phase === 'PLAY' && view.floor.some((f) => f.month === c.month && !c.isBonus) ? 'matchable' : ''}`}
                     aria-label={`${c.name} 내기`}
                     aria-disabled={!canPlay || view.phase !== 'PLAY'}
                     onPointerDown={() => {

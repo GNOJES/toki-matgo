@@ -4,6 +4,11 @@ import { syncFloorLayout } from '../src/lib/floor-layout';
 const card = (id: string) => CARDS.find((c) => c.id === id)!;
 it('keeps existing month and individual card positions after captures and reuses an empty place', () => {
   const before = syncFloorLayout(new Map(), ['m1-0', 'm1-1', 'm2-0', 'm3-0'].map(card));
+  const triple = syncFloorLayout(before, ['m1-0', 'm1-1', 'm1-2', 'm2-0', 'm3-0'].map(card));
+  expect(triple.get(1)?.slot).toBe(before.get(1)?.slot);
+  expect(triple.get(1)?.cards.get('m1-0')).toBe(0);
+  expect(triple.get(1)?.cards.get('m1-1')).toBe(before.get(1)?.cards.get('m1-1'));
+  expect([...triple.get(1)!.cards.values()].sort((a, b) => a - b)).toEqual([-1, 0, 1]);
   const after = syncFloorLayout(before, ['m1-1', 'm3-0', 'm4-0'].map(card));
   expect(after.get(1)?.slot).toBe(before.get(1)?.slot);
   expect(after.get(1)?.cards.get('m1-1')).toBe(before.get(1)?.cards.get('m1-1'));

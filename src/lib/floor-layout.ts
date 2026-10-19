@@ -16,6 +16,8 @@ export const FLOOR_PLACES = [
   [33, 90, -4],
 ];
 const order = [0, 2, 4, 6, 1, 3, 5, 7, 8, 9, 10, 11];
+// Keep the first card at its anchor; the third card completes a centered triple.
+const pileOrder = [0, 1, -1, 2];
 function footprint(slot: number, indices: number[]) {
   const [x, y] = FLOOR_PLACES[slot];
   const centers = indices.map((i) => x + i * 9.5 * (x > 50 ? -1 : 1));
@@ -47,10 +49,7 @@ export function syncFloorLayout(previous: FloorLayout, cards: Card[]): FloorLayo
       const count = cards.filter((c) => c.month === card.month && !c.isBonus).length;
       const slot =
         free.find((slot) => {
-          const a = footprint(
-            slot,
-            Array.from({ length: count }, (_, i) => i),
-          );
+          const a = footprint(slot, pileOrder.slice(0, count));
           return [...result.values()].every((other) => {
             const b = footprint(other.slot, [...other.cards.values()]);
             return a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
@@ -63,8 +62,7 @@ export function syncFloorLayout(previous: FloorLayout, cards: Card[]): FloorLayo
     }
     if (!place.cards.has(card.id)) {
       const used = new Set(place.cards.values());
-      let index = 0;
-      while (used.has(index)) index++;
+      const index = pileOrder.find((index) => !used.has(index))!;
       place.cards.set(card.id, index);
     }
   }
