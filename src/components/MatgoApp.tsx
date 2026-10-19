@@ -991,7 +991,7 @@ export function MatgoApp() {
               <a
                 className="brand"
                 href="https://toki-gostop.vercel.app"
-                aria-label="토끼고스톱로 전환"
+                aria-label="토끼고스톱으로 전환"
               >
                 <span>토끼고스톱</span>
               </a>
