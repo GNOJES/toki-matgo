@@ -37,7 +37,7 @@ export function cardFlight(
   const hand = mine
     ? document.querySelector(`[data-card-id="${card?.id}"] .hwatu`)
     : document.querySelector('[data-testid="opponent-hand"]');
-  const deck = document.querySelector('.deck .hwatu');
+  const deck = document.querySelector('.deck .hwatu') ?? document.querySelector('.deck');
   const opponentPi = document
     .querySelectorAll('.captured')
     [mine ? 0 : 1]?.querySelectorAll('.captured-group')[3];

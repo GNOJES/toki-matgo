@@ -1222,7 +1222,7 @@ export function MatgoApp() {
           />
           <div className="floor-area" data-testid="floor-area">
             <div className="deck" aria-label={`뒤집힌 덱 ${view.deckCount}장`}>
-              <Card back />
+              {view.deckCount > 0 && <Card back />}
               <span>
                 {view.deckCount}
                 <small>남은 패</small>
