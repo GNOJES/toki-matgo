@@ -987,18 +987,28 @@ export function MatgoApp() {
       {screen === 'home' && (
         <section className="home">
           <header className="home-header">
-            <a
-              className="brand"
-              href="/"
-              aria-label="토끼맞고 홈"
-              onClick={(event) => {
-                event.preventDefault();
-                leave();
-              }}
-            >
-              토끼<span>맞고</span>
-              <RabbitMark />
-            </a>
+            <nav className="game-switch" aria-label="게임 선택">
+              <a
+                className="brand"
+                href="https://toki-gostop.vercel.app"
+                aria-label="토끼고스톱로 전환"
+              >
+                <span>토끼고스톱</span>
+              </a>
+              <a
+                className="brand"
+                href="/"
+                aria-label="토끼맞고 홈"
+                aria-current="page"
+                onClick={(event) => {
+                  event.preventDefault();
+                  leave();
+                }}
+              >
+                <span>토끼맞고</span>
+                <RabbitMark />
+              </a>
+            </nav>
             <button className="icon-button" aria-label="설정" onClick={() => setSettings(true)}>
               <SettingsIcon />
             </button>
