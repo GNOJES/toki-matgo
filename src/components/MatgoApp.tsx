@@ -1022,11 +1022,7 @@ export function MatgoApp() {
               <br />
               마주 앉은 것처럼.
             </h1>
-            <p>
-              스마트폰 두 대면 충분해요.
-              <br />
-              소중한 사람과 나누는 작은 한 판.
-            </p>
+            <p>소중한 사람과 나누는 작은 한 판.</p>
           </div>
           <div className="home-table">
             <span className="table-stitch" />
