@@ -1,3 +1,4 @@
+import { startDebugGame } from './debug-helper';
 import { test, expect } from '@playwright/test';
 
 test('mobile go stop decision preserves visible board and allows card inspection before deciding', async ({
@@ -12,7 +13,7 @@ test('mobile go stop decision preserves visible board and allows card inspection
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto('/?debug=1');
-    await page.getByRole('button', { name: /혼자 치기/ }).click();
+    await startDebugGame(page);
     await page.getByRole('button', { name: '개발', exact: true }).click();
     await page.getByRole('button', { name: '국화 점수 선택', exact: true }).click();
     await page.locator('[data-card-id="m2-0"]').click();
@@ -80,7 +81,7 @@ for (const inspectBeforeGo of [false, true]) {
     page,
   }) => {
     await page.goto('/?debug=1');
-    await page.getByRole('button', { name: /혼자 치기/ }).click();
+    await startDebugGame(page);
     await page.getByRole('button', { name: '개발', exact: true }).click();
     await page.getByRole('button', { name: '국화 점수 선택', exact: true }).click();
     await page.getByRole('button', { name: '국화 열끗 · 쌍피 선택', exact: true }).click();
@@ -106,7 +107,7 @@ for (const inspectBeforeGo of [false, true]) {
 test('mobile go stop waits for an existing card inspection to close', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/?debug=1');
-  await page.getByRole('button', { name: /혼자 치기/ }).click();
+  await startDebugGame(page);
   await page.getByRole('button', { name: '개발', exact: true }).click();
   await page.getByRole('button', { name: '국화 점수 선택', exact: true }).click();
   await page.getByRole('button', { name: '국화 열끗 · 쌍피 선택', exact: true }).click();

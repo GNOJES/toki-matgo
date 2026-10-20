@@ -1,10 +1,11 @@
+import { startDebugGame } from './debug-helper';
 import { test, expect } from '@playwright/test';
 
 test('mobile chrysanthemum choice shows scoring alternatives and mandatory choice cannot close on Back', async ({
   page,
 }) => {
   await page.goto('/?debug=1');
-  await page.getByRole('button', { name: /혼자 치기/ }).click();
+  await startDebugGame(page);
   await page.getByRole('button', { name: '개발', exact: true }).click();
   await page.getByRole('button', { name: '국화 선택', exact: true }).click();
   await page.getByRole('button', { name: '국화 열끗 · 쌍피 선택', exact: true }).click();

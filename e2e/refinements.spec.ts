@@ -117,7 +117,7 @@ test('browser traversal from an outside entry stays in game and cross-document e
   test.skip(browserName !== 'chromium', 'Chrome browser history protocol');
   await page.goto('/outside-test');
   await page.goto('/?debug=1');
-  await page.getByRole('button', { name: /혼자 치기/ }).click();
+  await startDebugGame(page);
   const cdp = await context.newCDPSession(page);
   await openHandZoom(page);
   let history = await cdp.send('Page.getNavigationHistory');
@@ -152,7 +152,7 @@ test('mobile center deck matches floor card size and twelve months never cover e
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto('/?debug=1');
-    await page.getByRole('button', { name: /혼자 치기/ }).click();
+    await startDebugGame(page);
     await page.getByRole('button', { name: '개발', exact: true }).click();
     await page.getByRole('button', { name: '열두 달 바닥', exact: true }).click();
     await expect(page.getByRole('dialog', { name: '개발 · 룰 검증' })).toHaveCount(0);
@@ -211,7 +211,7 @@ test('mobile ppuk bonus rests with its month instead of an unrelated bonus group
   page,
 }) => {
   await page.goto('/?debug=1');
-  await page.getByRole('button', { name: /혼자 치기/ }).click();
+  await startDebugGame(page);
   await page.getByRole('button', { name: '개발', exact: true }).click();
   await page.getByRole('button', { name: '뻑과 보너스', exact: true }).click();
   await page.locator('.hand-card[data-card-id="m1-2"]').click();

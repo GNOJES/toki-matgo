@@ -1,3 +1,4 @@
+import { startDebugGame } from './debug-helper';
 import { test, expect } from '@playwright/test';
 
 test('mobile in-app browser keeps guidance and all cards separate as toolbars resize', async ({
@@ -5,7 +6,7 @@ test('mobile in-app browser keeps guidance and all cards separate as toolbars re
 }) => {
   await page.setViewportSize({ width: 378, height: 672 });
   await page.goto('/?debug=1');
-  await page.getByRole('button', { name: /혼자 치기/ }).click();
+  await startDebugGame(page);
   await page.getByRole('button', { name: '개발', exact: true }).click();
   await page.getByRole('button', { name: '열두 달 바닥', exact: true }).click();
   await expect

@@ -1,8 +1,9 @@
+import { startDebugGame } from './debug-helper';
 import { expect, test, type Page } from '@playwright/test';
 
 async function scoreFixture(page: Page) {
   await page.goto('/?debug=1');
-  await page.getByRole('button', { name: /혼자 치기/ }).click();
+  await startDebugGame(page);
   await page.getByRole('button', { name: '개발', exact: true }).click();
   await page.getByRole('button', { name: '국화 점수 선택', exact: true }).click();
 }

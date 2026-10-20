@@ -134,7 +134,7 @@ test('mobile single rounds accumulate across reload and new session, with confir
   await expect(history).toContainText('총 3판');
   await expect(history.locator('.history-list li')).toHaveCount(3);
   await history.getByRole('button', { name: '닫기', exact: true }).click();
-  await page.getByRole('button', { name: /혼자 치기/ }).click();
+  await startDebugGame(page);
   await page.getByRole('button', { name: '개발', exact: true }).click();
   await page.getByLabel('애니메이션 건너뛰기').check();
   await page.getByRole('button', { name: '닫기', exact: true }).click();
